@@ -17,14 +17,17 @@ import com.ddlmate.domain.CourseSchedule;
 import com.ddlmate.domain.Task;
 import com.ddlmate.domain.TaskSource;
 import com.ddlmate.domain.TaskType;
+import com.ddlmate.repository.AppSettingRepository;
 import com.ddlmate.repository.CourseRepository;
 import com.ddlmate.repository.CourseScheduleRepository;
 import com.ddlmate.repository.TaskRepository;
 import com.ddlmate.repository.TaskSourceRepository;
 
 /**
- * dev profile 的示例数据：只在课程表为空时插入一次，方便第一次打开界面就能看到内容。
- * 正式（mysql）profile 不会执行。
+ * dev profile 的示例数据：只在<strong>全新的空库</strong>（没有课程、任务、原通知、设置）时插入一次，
+ * 方便第一次打开界面就能看到内容。正式（mysql）profile 不会执行。
+ *
+ * <p>只看课程表会出错：用户把课程全部删掉后，下次启动会把示例课程和任务又塞回去。</p>
  */
 @Configuration
 @Profile("dev")
@@ -34,10 +37,12 @@ public class DevDataSeeder {
 
     @Bean
     ApplicationRunner seedDevData(CourseRepository courseRepository, CourseScheduleRepository scheduleRepository,
-            TaskRepository taskRepository, TaskSourceRepository sourceRepository) {
+            TaskRepository taskRepository, TaskSourceRepository sourceRepository,
+            AppSettingRepository settingRepository) {
         return args -> {
-            if (courseRepository.count() > 0) {
-                log.info("dev 示例数据已存在，跳过初始化");
+            if (courseRepository.count() > 0 || taskRepository.count() > 0 || sourceRepository.count() > 0
+                    || settingRepository.count() > 0) {
+                log.info("库里已有数据，跳过 dev 示例数据初始化");
                 return;
             }
             ZoneId zone = TimeZones.zone();
