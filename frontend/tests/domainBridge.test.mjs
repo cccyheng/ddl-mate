@@ -93,3 +93,27 @@ test('专注：存储格式往返后仍能解码（与手机端同一份 JSON）
   const again = decodeFocus(JSON.stringify(store))
   assert.equal(focusTotal(again, t0, t0 + 3600000, t0 + 3600000), 25 * 60000)
 })
+
+test('状态：网页的 ARCHIVED 在规则模块里按「已取消」处理，不计入压力', async () => {
+  const { analyzeDdlPressure: analyze } = await import('../../mobile/src/domain/ddlPressure.ts')
+  const archived = toDomainTask(webTask({ status: 'ARCHIVED' }))
+  assert.equal(archived.status, 'CANCELLED')
+  const analysis = analyze({ tasks: [archived], now: new Date('2026-11-04T14:00:00+08:00') })
+  assert.equal(analysis.includedCount, 0)
+  assert.equal(analysis.excludedInactiveCount, 1)
+})
+
+test('重复任务草稿 → 网页创建请求：墙上时间补 +08:00，只到日期按 23:59，0 分钟视为未填', async () => {
+  const { deadlineForWeb, draftToTaskRequest } = await import('../src/domain/taskTypes.js')
+  assert.equal(deadlineForWeb('2026-11-09T23:59'), '2026-11-09T23:59:00+08:00')
+  assert.equal(deadlineForWeb('2026-11-09'), '2026-11-09T23:59:00+08:00')
+  assert.equal(deadlineForWeb('2026-11-09T10:00:00+08:00'), '2026-11-09T10:00:00+08:00')
+  assert.equal(deadlineForWeb(''), null)
+  const body = draftToTaskRequest({
+    title: '周作业', description: '', courseId: 3, type: 'HOMEWORK', status: 'TODO', priority: 3,
+    deadline: '2026-11-09T23:59', estimatedMinutes: '0', submitRequirement: '', submitMethod: '', originalText: '',
+  })
+  assert.equal(body.estimatedMinutes, null)
+  assert.equal(body.description, null)
+  assert.equal(body.deadline, '2026-11-09T23:59:00+08:00')
+})

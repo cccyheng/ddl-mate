@@ -7,7 +7,8 @@ export function toDomainTask(task) {
     description: task.description ?? null,
     courseId: task.course?.id ?? null,
     type: task.type,
-    status: task.status,
+    // 网页的「已归档」在规则模块里等同手机端的「已取消」：都不再计入压力、计划与提醒
+    status: task.status === 'ARCHIVED' ? 'CANCELLED' : task.status,
     priority: task.priority,
     deadline: task.deadline ?? null,
     estimatedMinutes: task.estimatedMinutes ?? null,

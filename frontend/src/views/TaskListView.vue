@@ -6,9 +6,11 @@ import AppIcon from '@/components/AppIcon.vue'
 import ErrorState from '@/components/ErrorState.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import LoadingState from '@/components/LoadingState.vue'
+import TaskBatchPanel from '@/components/TaskBatchPanel.vue'
 import TaskItem from '@/components/TaskItem.vue'
 import { fromDatetimeLocal } from '@/utils/datetime'
 
+const batchMode = ref(false)
 const loading = ref(true)
 const error = ref('')
 const tasks = ref([])
@@ -269,6 +271,13 @@ onMounted(async () => {
       </details>
     </section>
 
+    <TaskBatchPanel
+      v-if="batchMode && !error"
+      :tasks="tasks"
+      @close="batchMode = false"
+      @changed="load(pageInfo.page)"
+    />
+
     <ErrorState v-if="error" :message="error" @retry="load(pageInfo.page)" />
     <LoadingState v-else-if="loading" title="正在加载任务…" />
     <section v-else class="card">
@@ -277,6 +286,7 @@ onMounted(async () => {
           <div class="card__title">
             <AppIcon name="list" :size="18" />
             任务
+            <button v-if="!batchMode" type="button" class="btn btn--sm btn--ghost" @click="batchMode = true">批量操作</button>
           </div>
           <p class="card__hint">
             <template v-if="pageInfo.totalElements">

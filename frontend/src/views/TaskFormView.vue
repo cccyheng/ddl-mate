@@ -1,7 +1,9 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ApiError, taskApi } from '@/api'
+import { applyTemplate, decodeTemplateStore } from '@domain/taskTemplate'
+import { ApiError, courseApi, settingsApi, taskApi } from '@/api'
+import { SETTING_KEYS } from '@/domain/settingKeys'
 import ErrorState from '@/components/ErrorState.vue'
 import LoadingState from '@/components/LoadingState.vue'
 import TaskForm from '@/components/TaskForm.vue'
@@ -13,13 +15,46 @@ const router = useRouter()
 const taskId = computed(() => (route.params.id ? Number(route.params.id) : null))
 const isEdit = computed(() => taskId.value !== null)
 
-const loading = ref(isEdit.value)
+const templateId = computed(() => (!isEdit.value && route.query.template ? Number(route.query.template) : null))
+
+const loading = ref(isEdit.value || templateId.value !== null)
 const busy = ref(false)
 const error = ref('')
 const fieldErrors = ref({})
 const task = ref(null)
+const templateNotice = ref('')
+
+/** 从模板新建：用手机端同一套 applyTemplate 规则生成草稿（不带截止时间与状态）。 */
+async function loadTemplate() {
+  try {
+    const [setting, courses] = await Promise.all([settingsApi.get(SETTING_KEYS.TASK_TEMPLATES), courseApi.list()])
+    const decoded = decodeTemplateStore(setting.value ?? null)
+    const template = decoded.ok ? decoded.store.templates.find((t) => t.id === templateId.value) : null
+    if (!template) {
+      templateNotice.value = '模板不存在（可能已被删除），已改为空白表单。'
+      return
+    }
+    const { draft, warnings } = applyTemplate(template, new Set(courses.map((c) => c.id)))
+    task.value = {
+      title: draft.title,
+      description: draft.description,
+      course: draft.courseId ? { id: draft.courseId } : null,
+      type: draft.type,
+      priority: draft.priority,
+      estimatedMinutes: draft.estimatedMinutes ? Number(draft.estimatedMinutes) : '',
+      submitRequirement: draft.submitRequirement,
+      submitMethod: draft.submitMethod,
+    }
+    templateNotice.value = [`已按模板「${template.name}」预填，请补上截止时间。`, ...warnings].join(' ')
+  } catch (err) {
+    templateNotice.value = `读取模板失败：${err.message}（已改为空白表单）`
+  } finally {
+    loading.value = false
+  }
+}
 
 async function load() {
+  if (templateId.value !== null) return loadTemplate()
   if (!isEdit.value) return
   loading.value = true
   error.value = ''
@@ -77,6 +112,7 @@ onMounted(load)
     <LoadingState v-if="loading" title="正在加载任务…" />
     <ErrorState v-else-if="error && !task && isEdit" :message="error" @retry="load" />
     <section v-else class="card">
+      <div v-if="templateNotice" class="alert alert--success" style="margin-bottom: 16px">{{ templateNotice }}</div>
       <div v-if="error" class="alert alert--danger" style="margin-bottom: 16px">{{ error }}</div>
       <TaskForm
         :initial="task"

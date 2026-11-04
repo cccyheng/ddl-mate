@@ -6,6 +6,7 @@ import AppIcon from '@/components/AppIcon.vue'
 import AttachmentGallery from '@/components/AttachmentGallery.vue'
 import ErrorState from '@/components/ErrorState.vue'
 import LoadingState from '@/components/LoadingState.vue'
+import TaskStepsPanel from '@/components/TaskStepsPanel.vue'
 import { formatDateTime, remainingLabel } from '@/utils/datetime'
 
 const route = useRoute()
@@ -147,6 +148,9 @@ onMounted(load)
       <div class="row">
         <button class="btn" type="button" @click="router.back()">返回</button>
         <RouterLink v-if="task" class="btn" :to="`/tasks/${taskId}/edit`">编辑</RouterLink>
+        <RouterLink v-if="task" class="btn btn--ghost" :to="{ path: '/tools/templates', query: { fromTask: taskId } }">
+          存为模板
+        </RouterLink>
         <button v-if="task" class="btn btn--danger" type="button" @click="removeTask">删除</button>
       </div>
     </div>
@@ -204,6 +208,8 @@ onMounted(load)
           <dd>{{ task.completedAt ? formatDateTime(task.completedAt) : '尚未完成' }}</dd>
         </dl>
       </section>
+
+      <TaskStepsPanel :task-id="task.id" />
 
       <section class="card">
         <div class="card__head">

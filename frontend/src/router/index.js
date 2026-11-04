@@ -94,6 +94,19 @@ const routes = [
     component: () => import('@/views/LearningReportView.vue'),
     meta: { title: '学习周报' },
   },
+  {
+    path: '/tools/templates',
+    name: 'task-templates',
+    component: () => import('@/views/TaskTemplatesView.vue'),
+    meta: { title: '任务模板' },
+  },
+  {
+    path: '/tools/recurrence',
+    name: 'recurrence',
+    component: () => import('@/views/RecurrenceView.vue'),
+    meta: { title: '重复任务' },
+  },
+  { path: '/search', name: 'search', component: () => import('@/views/SearchView.vue'), meta: { title: '全局搜索' } },
   { path: '/:pathMatch(.*)*', name: 'not-found', component: () => import('@/views/NotFoundView.vue') },
 ]
 
