@@ -14,6 +14,9 @@
 # 验收证据、历史快照、发布 jar 与 QA 数据库（约 333MB，只保留在本机供追溯）
 .supervision/
 
+# 与本项目无关的流程图作业素材
+flowchart-redesign/
+
 # AI 工具会话记录
 .codex/
 .claude/settings.local.json
