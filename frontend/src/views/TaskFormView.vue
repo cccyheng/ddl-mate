@@ -21,7 +21,8 @@ const loading = ref(isEdit.value || templateId.value !== null)
 const busy = ref(false)
 const error = ref('')
 const fieldErrors = ref({})
-const task = ref(null)
+// 从「考试与复习」进入新建时预选考试类型（必须在表单挂载前给出，表单只在挂载时读取初值）
+const task = ref(!isEdit.value && route.query.type === 'EXAM' ? { type: 'EXAM' } : null)
 const templateNotice = ref('')
 
 /** 从模板新建：用手机端同一套 applyTemplate 规则生成草稿（不带截止时间与状态）。 */

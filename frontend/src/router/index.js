@@ -106,6 +106,19 @@ const routes = [
     component: () => import('@/views/RecurrenceView.vue'),
     meta: { title: '重复任务' },
   },
+  { path: '/exams', name: 'exams', component: () => import('@/views/ExamsView.vue'), meta: { title: '考试与复习' } },
+  {
+    path: '/tools/conflicts',
+    name: 'course-conflicts',
+    component: () => import('@/views/CourseConflictsView.vue'),
+    meta: { title: '课表冲突检查' },
+  },
+  {
+    path: '/tools/teaching-week',
+    name: 'teaching-week',
+    component: () => import('@/views/TeachingWeekView.vue'),
+    meta: { title: '教学周' },
+  },
   { path: '/search', name: 'search', component: () => import('@/views/SearchView.vue'), meta: { title: '全局搜索' } },
   { path: '/:pathMatch(.*)*', name: 'not-found', component: () => import('@/views/NotFoundView.vue') },
 ]
