@@ -625,9 +625,9 @@ hr {
   animation: page-in 0.32s var(--ease);
 }
 
+/* 只做轻微上移，不做淡入：后台标签页里动画可能被暂停，淡入会让页面停在半透明 */
 @keyframes page-in {
   from {
-    opacity: 0;
     transform: translateY(6px);
   }
 }

@@ -1,0 +1,1 @@
+const n=["周日","周一","周二","周三","周四","周五","周六"];function r(t){return new Date(t+8*36e5).toISOString().slice(0,10)}function s(t,e){return new Date(Date.parse(`${t}T00:00:00Z`)+e*864e5).toISOString().slice(0,10)}function a(t){return n[new Date(`${t}T00:00:00Z`).getUTCDay()]}function o(t){return`${t.slice(5)} ${a(t)}`}export{o as a,r as d,s,a as w};
