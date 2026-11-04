@@ -80,6 +80,13 @@ export const settingsApi = {
   remove: (key) => http.del(`/settings/${encodeURIComponent(key)}`),
 }
 
+/** 整库备份：导出 JSON → 预览（只读校验）→ 确认后整体替换恢复。 */
+export const backupApi = {
+  export: () => http.get('/backup/export'),
+  preview: (backup) => http.post('/backup/preview', backup),
+  restore: (backup) => http.post('/backup/restore', backup),
+}
+
 export const sourceApi = {
   listByTask: (taskId) => http.get(`/tasks/${taskId}/sources`),
   list: () => http.get('/sources'),

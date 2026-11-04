@@ -119,6 +119,13 @@ const routes = [
     component: () => import('@/views/TeachingWeekView.vue'),
     meta: { title: '教学周' },
   },
+  {
+    path: '/tools/reminders',
+    name: 'reminders',
+    component: () => import('@/views/RemindersView.vue'),
+    meta: { title: '提醒' },
+  },
+  { path: '/tools/backup', name: 'backup', component: () => import('@/views/BackupView.vue'), meta: { title: '备份与恢复' } },
   { path: '/search', name: 'search', component: () => import('@/views/SearchView.vue'), meta: { title: '全局搜索' } },
   { path: '/:pathMatch(.*)*', name: 'not-found', component: () => import('@/views/NotFoundView.vue') },
 ]

@@ -3,6 +3,8 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { profileApi } from '@/api'
 import AppIcon from '@/components/AppIcon.vue'
+import ReminderToasts from '@/components/ReminderToasts.vue'
+import { startReminderScheduler } from '@/composables/reminderScheduler'
 import { todayLabel } from '@/utils/datetime'
 import { readPreference, writePreference } from '@/utils/preferences'
 import { applyTheme, nextTheme, THEME_LABELS } from '@/utils/theme'
@@ -122,6 +124,7 @@ watch(
 onMounted(async () => {
   try {
     profile.value = await profileApi.get()
+    startReminderScheduler()
   } catch (error) {
     profileError.value = error.message
   }
@@ -238,6 +241,8 @@ onMounted(async () => {
         </div>
       </footer>
     </div>
+
+    <ReminderToasts />
   </div>
 </template>
 
