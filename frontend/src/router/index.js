@@ -12,26 +12,26 @@ const routes = [
     path: '/tasks/new',
     name: 'task-new',
     component: () => import('@/views/TaskFormView.vue'),
-    meta: { title: '新建任务' },
+    meta: { title: '新建任务', section: 'tasks' },
   },
   {
     // 必须放在 /tasks/:id 之前，否则会被当成 id=import-notices 的任务详情
     path: '/tasks/import-notices',
     name: 'task-import-notices',
     component: () => import('@/views/ImportNoticesView.vue'),
-    meta: { title: '从通知创建任务' },
+    meta: { title: '从通知创建任务', section: 'tasks' },
   },
   {
     path: '/tasks/:id',
     name: 'task-detail',
     component: () => import('@/views/TaskDetailView.vue'),
-    meta: { title: '任务详情' },
+    meta: { title: '任务详情', section: 'tasks' },
   },
   {
     path: '/tasks/:id/edit',
     name: 'task-edit',
     component: () => import('@/views/TaskFormView.vue'),
-    meta: { title: '编辑任务' },
+    meta: { title: '编辑任务', section: 'tasks' },
   },
   {
     path: '/courses',
@@ -43,13 +43,13 @@ const routes = [
     path: '/courses/import-schedule',
     name: 'schedule-import',
     component: () => import('@/views/ScheduleImportView.vue'),
-    meta: { title: '照片导入课表' },
+    meta: { title: '照片导入课表', section: 'courses' },
   },
   {
     path: '/courses/:id',
     name: 'course-detail',
     component: () => import('@/views/CourseDetailView.vue'),
-    meta: { title: '课程详情' },
+    meta: { title: '课程详情', section: 'courses' },
   },
   {
     path: '/calendar',
@@ -61,7 +61,7 @@ const routes = [
     path: '/calendar/day/:date',
     name: 'calendar-day',
     component: () => import('@/views/CalendarDayView.vue'),
-    meta: { title: '日期详情' },
+    meta: { title: '日期详情', section: 'calendar' },
   },
   {
     path: '/sources',

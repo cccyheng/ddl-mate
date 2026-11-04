@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web-dev",
+      "runtimeExecutable": "C:\\Users\\33284\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.exe",
+      "runtimeArgs": ["node_modules/vite/bin/vite.js", "--port", "5173", "--strictPort"],
+      "cwd": "frontend",
+      "port": 5173
+    }
+  ]
+}

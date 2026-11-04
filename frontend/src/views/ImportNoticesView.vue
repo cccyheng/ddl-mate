@@ -1278,7 +1278,7 @@ function rawTextInfo(source) {
   max-width: 40vw;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  background: #fff;
+  background: var(--surface);
 }
 
 .candidate-cards {
@@ -1299,7 +1299,7 @@ function rawTextInfo(source) {
 }
 
 .candidate-card--stale {
-  border-color: #f3ddc0;
+  border-color: var(--warn-line);
   background: var(--warn-soft);
 }
 
