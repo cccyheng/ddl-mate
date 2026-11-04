@@ -1,0 +1,57 @@
+{
+  "generatedBy": "frontend/scripts/make-notice-samples.mjs",
+  "note": "合成示例图，非真实聊天记录",
+  "samples": {
+    "notice-01-homework.png": {
+      "deadline": "2026-10-20T22:00",
+      "mustInclude": [
+        "学习通"
+      ],
+      "note": "完整日期 + 时刻 → 应自动填 DDL"
+    },
+    "notice-02-chat-time.png": {
+      "deadline": "",
+      "mustNotIncludeDeadline": true,
+      "note": "发送时间不能被当成截止时间，应留空提示"
+    },
+    "notice-03-two-tasks.png": {
+      "deadline": "2026-10-20T22:00",
+      "secondDeadline": "2026-11-03T14:00",
+      "minTasks": 2,
+      "note": "编号任务应拆成两条、互不串联"
+    },
+    "notice-04-email.png": {
+      "deadline": "2026-10-18T18:00",
+      "mustInclude": [
+        "a+b@example.edu.cn"
+      ],
+      "note": "邮箱地址必须完整保留"
+    },
+    "notice-05-month-day.png": {
+      "deadline": "",
+      "mustNotIncludeDeadline": true,
+      "note": "月日无年 → 必须留空提示，不能用系统年份猜"
+    },
+    "notice-06-vague.png": {
+      "deadline": "",
+      "mustNotIncludeDeadline": true,
+      "note": "「下节课前 / 明天下午」→ 必须留空提示"
+    },
+    "notice-07-list.png": {
+      "deadline": "2026-12-20T23:00",
+      "thirdDeadline": "2027-01-08T12:00",
+      "minTasks": 3,
+      "mustInclude": [
+        "雨课堂"
+      ],
+      "note": "三条任务各有自己的截止时间，末条 2027-01-08T12:00"
+    },
+    "notice-08-url.png": {
+      "deadline": "2026-10-30T16:00",
+      "mustInclude": [
+        "https://example.edu/eval?term=2026F"
+      ],
+      "note": "URL 不能被标点切碎"
+    }
+  }
+}

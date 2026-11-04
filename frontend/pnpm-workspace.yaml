@@ -1,0 +1,6 @@
+# pnpm 构建脚本许可：只放行确实需要执行的包，其余明确拒绝（避免交互式 approve-builds）。
+allowBuilds:
+  esbuild: true
+  # tesseract.js 的 postinstall 只是 `opencollective-postinstall || true`（捐赠提示），
+  # 与 OCR 运行无关，明确关闭，保持非交互构建。
+  tesseract.js: false

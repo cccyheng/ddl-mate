@@ -1,0 +1,31 @@
+{
+  "name": "ddl-mate-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "DDL Mate 前端（Vue 3 + Vite）：任务、课表、照片导入课表、日历与原通知",
+  "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "prepare-ocr": "node scripts/prepare-ocr-assets.mjs",
+    "prebuild": "node scripts/prepare-ocr-assets.mjs",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test:parser": "node tests/timetableParser.test.mjs",
+    "ocr:smoke": "node scripts/ocr-smoke.mjs",
+    "ocr:weekgrid": "node scripts/ocr-weekgrid-node.mjs"
+  },
+  "dependencies": {
+    "vue": "3.5.13",
+    "vue-router": "4.5.0",
+    "tesseract.js": "^6.0.0"
+  },
+  "devDependencies": {
+    "@tesseract.js-data/chi_sim": "^1.0.0",
+    "@tesseract.js-data/eng": "^1.0.0",
+    "@vitejs/plugin-vue": "5.2.1",
+    "vite": "6.0.3"
+  }
+}

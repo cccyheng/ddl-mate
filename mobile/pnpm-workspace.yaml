@@ -1,0 +1,22 @@
+# pnpm 设置（仅本地开发用）。
+#
+# `nodeLinker: hoisted` 是这里的关键：
+# pnpm 默认的 isolated 布局会用**符号链接/junction** 来省空间，但本机 Node 的
+# `fs.realpathSync` 不会把 pnpm 的 junction 解析到 `.pnpm` 目标（Expo CLI 也因此在
+# `Cannot find module '@expo/cli'` 上失败）。改成 hoisted 后 `node_modules` 是普通
+# 平铺目录，Node / Expo CLI / Metro 都能按常规解析，不需要任何 NODE_PATH 兜底。
+#
+# 依赖里没有必须执行安装脚本的原生构建包：原生模块由 Expo Go 自带，
+# JS 依赖是纯 JS/TS，因此不开启任何 allowBuilds。
+nodeLinker: hoisted
+
+# `packageImportMethod: copy` 是为了绕开一次真实的失败：
+# hoisted 布局下 pnpm 默认的 hardlink/auto 导入会先在 `node_modules` 里建
+# `<pkg>_tmp_<pid>_<n>` 临时目录再改名；该步骤曾以
+# `[ERR_PNPM_ENOENT] ... metro_tmp_284472_17\node_modules` 失败并留下 4 个残留
+# `*_tmp_*` 目录，导致安装中断（expo-sqlite 等 tarball 报 UND_ERR_DESTROYED）。
+# 改成 copy 后不再依赖改名/hardlink，代价是占一点磁盘（本地开发可接受）。
+packageImportMethod: copy
+
+packages: []
+

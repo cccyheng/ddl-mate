@@ -1,0 +1,37 @@
+# 测试专用配置：
+# - 使用 H2 内存库，保证测试之间互不污染、可重复执行
+# - 每个测试类通过 @DynamicPropertySource 指定独立的附件临时目录
+# - Mockito 的 mock-maker 由 src/test/resources/mockito-extensions/org.mockito.plugins.MockMaker
+#   声明为 subclass（无需 agent）。注意 mockito.mock-maker 这个系统属性并不是 Mockito 的配置入口，
+#   写在 yml 或 pom 里都不会生效——本项目曾误配过，已移除。
+spring:
+  datasource:
+    url: jdbc:h2:mem:ddlmate-test;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 20MB
+
+ddlmate:
+  storage:
+    upload-dir: ${java.io.tmpdir}/ddlmate-test-uploads
+    max-file-size: 5MB
+  user:
+    username: local
+    display-name: 测试同学
+
+server:
+  port: 0
+
+logging:
+  level:
+    root: WARN
+    com.ddlmate: INFO
+    org.springframework.test: WARN

@@ -1,0 +1,20 @@
+# =====================================================================
+# 正式 profile：MySQL 8（本机当前没有 MySQL，因此未经实测，见 docs/verification.md）
+# 先用 backend/src/main/resources/db/mysql/schema.sql 建库建表，
+# 再用 ddl-auto=validate 校验实体与表结构一致。
+# 启动：mvn -f backend/pom.xml spring-boot:run -Dspring-boot.run.profiles=mysql
+# =====================================================================
+spring:
+  datasource:
+    url: ${DDLMATE_MYSQL_URL:jdbc:mysql://127.0.0.1:3306/ddl_mate?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${DDLMATE_MYSQL_USER:ddl_mate}
+    password: ${DDLMATE_MYSQL_PASSWORD:change-me}
+    hikari:
+      maximum-pool-size: 10
+      connection-timeout: 10000
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    database-platform: org.hibernate.dialect.MySQLDialect

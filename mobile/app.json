@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "DDL Mate",
+    "slug": "ddl-mate",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "ddlmate",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "local.ddlmate.app",
+      "infoPlist": {
+        "CFBundleDevelopmentRegion": "zh_CN"
+      }
+    },
+    "android": {
+      "package": "local.ddlmate.app"
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": ["expo-sqlite"],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}

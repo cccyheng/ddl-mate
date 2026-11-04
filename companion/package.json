@@ -1,0 +1,25 @@
+{
+  "name": "ddl-mate-ocr-companion",
+  "version": "0.1.0",
+  "private": true,
+  "description": "DDL Mate 本地 OCR 伴侣服务：同一 Wi-Fi 电脑上跑的 Node 小服务，复用前端同一套周视图识别流水线，只监听本机 / 局域网，不上传任何图片到第三方。",
+  "type": "module",
+  "engines": {
+    "node": ">=20.19.4"
+  },
+  "main": "src/server.mjs",
+  "scripts": {
+    "start": "node src/server.mjs",
+    "start:lan": "node src/server.mjs --lan",
+    "test": "node --test --experimental-test-isolation=none tests/server.test.mjs",
+    "test:http": "node --test --experimental-test-isolation=none tests/serverHttp.test.mjs",
+    "test:fallback": "node --test --experimental-test-isolation=none tests/fallbackEngine.test.mjs",
+    "test:actual-table": "node --test --experimental-test-isolation=none tests/actualTableImage.test.mjs",
+    "test:real-image": "node tests/realImageHttp.mjs"
+  },
+  "dependencies": {
+    "jpeg-js": "^0.4.4",
+    "pngjs": "^7.0.0",
+    "tesseract.js": "^6.0.0"
+  }
+}

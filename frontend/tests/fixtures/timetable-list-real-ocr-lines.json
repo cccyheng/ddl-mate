@@ -1,0 +1,55 @@
+{
+  "note": "真实 OCR 输出快照：来自 .supervision/ocr-real-timetable-list.json（PSM 11，chi_sim+eng），仅保留行与 bbox",
+  "image": "C:\\Users\\33284\\OneDrive\\文档\\ChatGPT\\大学生ddl\\frontend\\public\\samples\\timetable-list.png",
+  "confidence": 91,
+  "lines": [
+    {
+      "text": "我的课表",
+      "confidence": 91,
+      "bbox": {
+        "x0": 50,
+        "y0": 37,
+        "x1": 185,
+        "y1": 69,
+        "cx": 117.5,
+        "cy": 53
+      }
+    },
+    {
+      "text": "高等数学 周一 08:00-09:40 教一101 第1-16周 单周",
+      "confidence": 91,
+      "bbox": {
+        "x0": 50,
+        "y0": 132,
+        "x1": 691,
+        "y1": 159,
+        "cx": 370.5,
+        "cy": 145.5
+      }
+    },
+    {
+      "text": "数据结构 周二 08:00-09:40 教二203 第1-16周 双周",
+      "confidence": 92,
+      "bbox": {
+        "x0": 50,
+        "y0": 242,
+        "x1": 691,
+        "y1": 269,
+        "cx": 370.5,
+        "cy": 255.5
+      }
+    },
+    {
+      "text": "大学英语 周三 14:00-15:40 教三305 第1-16周 每周",
+      "confidence": 92,
+      "bbox": {
+        "x0": 51,
+        "y0": 352,
+        "x1": 691,
+        "y1": 379,
+        "cx": 371,
+        "cy": 365.5
+      }
+    }
+  ]
+}

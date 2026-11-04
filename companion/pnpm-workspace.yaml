@@ -1,0 +1,18 @@
+# pnpm 设置（仅本地开发用）。
+#
+# `nodeLinker: hoisted` 与 mobile/ 保持同一套理由：pnpm 默认的 isolated 布局把依赖
+# 放在 `node_modules/.pnpm` 下并用符号链接只暴露**直接依赖**；而 `tesseract.js`
+# 在运行时会 `require('regenerator-runtime/runtime')`，isolated 布局下顶层
+# `node_modules` 里没有它，启动就报 `Cannot find module 'regenerator-runtime/runtime'`。
+# 平铺（hoisted）后依赖都出现在顶层，与 `frontend/` 的安装方式一致。
+nodeLinker: hoisted
+
+# 与 mobile/ 相同的取舍：避免 hoisted 下 hardlink + 改名步骤的偶发 ENOENT。
+packageImportMethod: copy
+
+# tesseract.js 的 install 脚本只是 opencollective 的募捐提示，不需要执行。
+# 显式写 false，避免 `pnpm install` 每次以 ERR_PNPM_IGNORED_BUILDS 退出。
+allowBuilds:
+  tesseract.js: false
+
+packages: []

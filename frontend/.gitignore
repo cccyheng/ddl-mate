@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.vite/
+*.local
+.mvn/
+
+# OCR 运行资源由 scripts/prepare-ocr-assets.mjs 在构建时从 node_modules 复制，
+# 体积较大且可复现，不入版本库。
+public/tesseract/

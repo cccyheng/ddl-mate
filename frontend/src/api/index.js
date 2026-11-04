@@ -1,0 +1,83 @@
+import { http, attachmentUrl } from './client'
+
+export { attachmentUrl }
+// 组件里需要 `err instanceof ApiError` 判断错误类型（例如课程删除 409 的二次确认）
+export { ApiError } from './client'
+
+export const metaApi = {
+  enums: () => http.get('/meta/enums'),
+  /** 附件与批量导入的真实上限（图片大小 / 张数 / 来源数 / 候选数）。 */
+  storageLimits: () => http.get('/meta/storage-limits'),
+};
+
+export const profileApi = {
+  get: () => http.get('/profile'),
+  update: (displayName) => http.put('/profile', { displayName }),
+}
+
+export const courseApi = {
+  list: (keyword) => http.get('/courses', { keyword }),
+  get: (id) => http.get(`/courses/${id}`),
+  create: (payload) => http.post('/courses', payload),
+  update: (id, payload) => http.put(`/courses/${id}`, payload),
+  remove: (id, force = false) => http.del(`/courses/${id}`, { force }),
+}
+
+export const scheduleApi = {
+  list: (weekday, date) => http.get('/schedules', { weekday, date }),
+  today: () => http.get('/schedules/today'),
+  byDate: (date) => http.get('/schedules/by-date', { date }),
+  importBatch: (payload) => http.post('/schedules/import', payload),
+  listByCourse: (courseId) => http.get(`/courses/${courseId}/schedules`),
+  create: (courseId, payload) => http.post(`/courses/${courseId}/schedules`, payload),
+  update: (courseId, scheduleId, payload) =>
+    http.put(`/courses/${courseId}/schedules/${scheduleId}`, payload),
+  remove: (courseId, scheduleId) => http.del(`/courses/${courseId}/schedules/${scheduleId}`),
+}
+
+/** 月历：一次拿到当月每天的课程与任务 DDL。 */
+export const calendarApi = {
+  month: (year, month) => http.get('/calendar', { year, month }),
+}
+
+export const taskApi = {
+  list: (params) => http.get('/tasks', params),
+  deadlines: (params) => http.get('/tasks/deadlines', params),
+  today: () => http.get('/tasks/today'),
+  calendar: (year, month) => http.get('/tasks/calendar', { year, month }),
+  byDate: (date) => http.get('/tasks/by-date', { date }),
+  stats: () => http.get('/tasks/stats'),
+  get: (id) => http.get(`/tasks/${id}`),
+  create: (payload) => http.post('/tasks', payload),
+  update: (id, payload) => http.put(`/tasks/${id}`, payload),
+  patch: (id, payload) => http.patch(`/tasks/${id}`, payload),
+  changeStatus: (id, status) => http.patch(`/tasks/${id}/status`, { status }),
+  remove: (id) => http.del(`/tasks/${id}`),
+
+  /**
+   * V1.2 时间助手：简短时间短语 → 明确时间（可选结合课程课表）。
+   * 只读接口：不会创建 / 修改任何数据；只有用户显式「采用」后前端才改表单或候选。
+   */
+  resolveTime: (payload) => http.post('/tasks/resolve-time', payload),
+
+  /**
+   * 「通知 → 待办」批量导入（multipart）。
+   * `notice` 是 JSON 部分，`files` 可重复出现且顺序必须与 JSON 里的 fileIndex 一致；
+   * 表单由 importPayload.js 的 toFormData 组装，保证与本地测试用同一套顺序。
+   */
+  importNotices: (formData, options) => http.upload('/tasks/import-notices', formData, options),
+}
+
+export const sourceApi = {
+  listByTask: (taskId) => http.get(`/tasks/${taskId}/sources`),
+  list: () => http.get('/sources'),
+  create: (taskId, payload) => http.post(`/tasks/${taskId}/sources`, payload),
+  get: (id) => http.get(`/sources/${id}`),
+  remove: (id) => http.del(`/sources/${id}`),
+  upload: (id, files) => {
+    const formData = new FormData()
+    for (const file of files) formData.append('file', file)
+    return http.upload(`/sources/${id}/attachments`, formData)
+  },
+  removeAttachment: (id) => http.del(`/attachments/${id}`),
+}

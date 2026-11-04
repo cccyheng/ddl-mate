@@ -1,0 +1,67 @@
+# =====================================================================
+# DDL Mate .gitignore
+# 依赖、构建产物、数据库与上传文件都不入版本库
+# =====================================================================
+
+# 工作区内的依赖缓存与工具（由 scripts 下载到这里，不污染全局）
+.tools/
+.tools/m2/
+.tools/pnpm-store/
+.tools/npm-cache/
+# 根目录误生成的 pnpm store（约 12 万文件，路径超长）
+.pnpm-store/
+
+# 验收证据、历史快照、发布 jar 与 QA 数据库（约 333MB，只保留在本机供追溯）
+.supervision/
+
+# AI 工具会话记录
+.codex/
+.claude/settings.local.json
+
+# 本地环境变量（只提交 .env.example）
+.env
+.env.*
+!.env.example
+
+# 后端构建产物
+backend/target/
+*.class
+
+# 本地数据库与上传附件（运行期数据）
+data/
+backend/data/
+*.mv.db
+*.trace.db
+*.sqlite
+*.db
+
+# 前端
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# 原生 iOS 客户端（mobile/）
+mobile/node_modules/
+# 旧损坏依赖树的隔离备份（排障用，确认无误后可删除）
+mobile/node_modules-quarantine-*/
+mobile/dist-ios/
+mobile/.expo/
+mobile/expo-env.d.ts
+
+# 本地 OCR 伴侣（companion/）
+companion/node_modules/
+
+# 兜底：任何位置的依赖目录
+node_modules/
+
+# IDE / 系统
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
+
+# 日志与临时文件
+*.log
+logs/
+tmp/
