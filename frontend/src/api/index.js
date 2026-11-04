@@ -68,6 +68,18 @@ export const taskApi = {
   importNotices: (formData, options) => http.upload('/tasks/import-notices', formData, options),
 }
 
+/**
+ * 键值设置（专注记录、今日计划、模板、复习安排……）。取值是与手机端相同格式的字符串，
+ * 写入必须带读到的 revision；被别处改过会得到 409 SETTING_CONFLICT。
+ */
+export const settingsApi = {
+  get: (key) => http.get(`/settings/${encodeURIComponent(key)}`),
+  listByPrefix: (prefix) => http.get('/settings', { prefix }),
+  put: (key, value, expectedRevision) =>
+    http.put(`/settings/${encodeURIComponent(key)}`, { value, expectedRevision }),
+  remove: (key) => http.del(`/settings/${encodeURIComponent(key)}`),
+}
+
 export const sourceApi = {
   listByTask: (taskId) => http.get(`/tasks/${taskId}/sources`),
   list: () => http.get('/sources'),

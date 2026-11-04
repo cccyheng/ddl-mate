@@ -22,7 +22,12 @@ public class SpaController {
             "/courses", "/courses/**",
             "/calendar", "/calendar/**",
             "/sources", "/sources/**",
-            "/about", "/about/**"
+            "/about", "/about/**",
+            "/focus", "/focus/**",
+            "/plan", "/plan/**",
+            "/exams", "/exams/**",
+            "/search", "/search/**",
+            "/tools", "/tools/**"
     })
     public String index() {
         return "forward:/index.html";

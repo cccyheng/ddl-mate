@@ -14,6 +14,7 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.ddlmate.repository.AppSettingRepository;
 import com.ddlmate.repository.AttachmentRepository;
 import com.ddlmate.repository.CourseRepository;
 import com.ddlmate.repository.CourseScheduleRepository;
@@ -49,6 +50,9 @@ public abstract class BaseIntegrationTest {
     @Autowired
     protected AttachmentRepository attachmentRepository;
 
+    @Autowired
+    protected AppSettingRepository settingRepository;
+
     @DynamicPropertySource
     static void storageProperties(DynamicPropertyRegistry registry) {
         registry.add("ddlmate.storage.upload-dir", () -> UPLOAD_DIR.toString());
@@ -61,6 +65,7 @@ public abstract class BaseIntegrationTest {
         taskRepository.deleteAll();
         scheduleRepository.deleteAll();
         courseRepository.deleteAll();
+        settingRepository.deleteAll();
     }
 
     private static Path createTempUploadDir() {

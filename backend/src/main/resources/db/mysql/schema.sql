@@ -128,3 +128,12 @@ CREATE TABLE IF NOT EXISTS attachments (
     KEY idx_attachment_source (task_source_id),
     CONSTRAINT fk_attachment_source FOREIGN KEY (task_source_id) REFERENCES task_sources (id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
+
+-- 键值设置：专注 / 计划 / 模板 / 复习等功能的紧凑 JSON（键名与取值格式同手机端 app_settings）
+CREATE TABLE IF NOT EXISTS app_settings (
+    setting_key   VARCHAR(96)  NOT NULL,
+    setting_value LONGTEXT     NOT NULL,
+    revision      BIGINT       NOT NULL,
+    updated_at    DATETIME(6)  NOT NULL,
+    PRIMARY KEY (setting_key)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
