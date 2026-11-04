@@ -15,7 +15,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "typecheck": "tsc --noEmit",
-    "test": "node --import ./tests/setup.mjs --test tests/*.test.mjs",
+    "test": "node --import ./tests/setup.mjs --test --experimental-test-isolation=none tests/*.test.mjs",
     "doctor": "expo-doctor",
     "check:deps": "expo install --check",
     "export:ios": "expo export --platform ios --output-dir dist-ios"

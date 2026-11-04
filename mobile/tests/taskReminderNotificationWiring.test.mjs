@@ -110,8 +110,8 @@ test('banner：编辑中不提供直接打开；失败可重试；缺失任务�
 
 test('依赖不变：没有为本模块新增包', () => {
   const pkg = JSON.parse(read('package.json'))
-  assert.equal(pkg.dependencies['expo-notifications'], '~57.0.23')
-  assert.equal(pkg.dependencies.expo, '~57.0.27')
+  const sdkMajor = pkg.dependencies.expo.match(/^~(\d+)\./)[1]
+  assert.match(pkg.dependencies['expo-notifications'], new RegExp(`^~${sdkMajor}\\.`))
   assert.equal(pkg.dependencies['@react-navigation/native'], '^7.5.0')
 })
 

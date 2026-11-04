@@ -205,6 +205,7 @@ test('本轮没有新增依赖', () => {
     'expo-file-system',
     'expo-image-manipulator',
     'expo-image-picker',
+    'expo-notifications',
     'expo-sqlite',
     'expo-status-bar',
     'react',

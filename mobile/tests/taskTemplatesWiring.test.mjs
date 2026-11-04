@@ -25,12 +25,12 @@ function read(relative) {
 test('路由类型与原生栈：任务栈 / 今天栈都注册了模板列表、模板表单与重复任务', () => {
   const types = read('navigation/types.ts')
   const taskStack = types.slice(types.indexOf('TaskStackParamList'), types.indexOf('TodayStackParamList'))
-  const todayStack = types.slice(types.indexOf('TodayStackParamList'), types.indexOf('CourseStackParamList'))
+  const todayStack = types.slice(types.indexOf('TodayStackParamList'), types.indexOf('export type CourseStackParamList'))
   for (const block of [taskStack, todayStack]) {
     assert.match(block, /TaskTemplateList: undefined/)
     assert.match(block, /TaskTemplateForm: \{ id\?: number; sourceTaskId\?: number \} \| undefined/)
     assert.match(block, /Recurrence: undefined/)
-    assert.match(block, /TaskForm: \{ id\?: number; templateId\?: number \} \| undefined/)
+    assert.match(block, /TaskForm: \{ id\?: number; templateId\?: number(?:; [^}]*)? \} \| undefined/)
   }
 
   const navigator = read('navigation/RootNavigator.tsx')

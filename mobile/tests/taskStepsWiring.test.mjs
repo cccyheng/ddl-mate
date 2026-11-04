@@ -27,7 +27,7 @@ function read(relative) {
 test('路由类型：今天栈与任务栈都声明了 TaskSteps，参数共用 { id: number }', () => {
   const types = read('navigation/types.ts')
   const taskStack = types.slice(types.indexOf('TaskStackParamList'), types.indexOf('TodayStackParamList'))
-  const todayStack = types.slice(types.indexOf('TodayStackParamList'), types.indexOf('CourseStackParamList'))
+  const todayStack = types.slice(types.indexOf('TodayStackParamList'), types.indexOf('export type CourseStackParamList'))
   assert.match(taskStack, /TaskSteps: \{ id: number \}/, '任务栈要有 TaskSteps 路由')
   assert.match(todayStack, /TaskSteps: \{ id: number \}/, '今天栈要有 TaskSteps 路由')
 })

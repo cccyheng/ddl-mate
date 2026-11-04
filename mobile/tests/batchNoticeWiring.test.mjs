@@ -81,7 +81,7 @@ test('每张图单独 push 全新 NoticeImport，采用逐字文字；没有合�
 
 test('设置 / 截图库走父级 Courses 栈的既有页面；全屏查看器复用共享组件', () => {
   const screen = read('screens/BatchNoticeScreen.tsx')
-  assert.match(screen, /parent\.navigate\('Courses',\s*\{\s*screen,\s*params\s*\}\)/)
+  assert.match(screen, /parent\.navigate\('Courses',\s*\{\s*screen,\s*params(?:,\s*initial:\s*false)?\s*\}\)/)
   assert.match(screen, /openCoursesScreen\(navigation,\s*'CompanionSettings'\)/)
   assert.match(screen, /openCoursesScreen\(navigation,\s*'PhotoLibrary'\)/)
   assert.ok(!/navigation\.navigate\('CompanionSettings'\)/.test(screen), 'TaskStack 没有 CompanionSettings 路由')

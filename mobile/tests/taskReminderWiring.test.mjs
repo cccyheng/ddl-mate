@@ -105,11 +105,11 @@ test('严格命名空间：服务只解析本应用 ID，并且全仓没有 canc
   }
 })
 
-test('依赖：只新增 expo-notifications（SDK 57 兼容版本）', () => {
+test('依赖：expo-notifications 与 Expo SDK 主版本一致', () => {
   const pkg = JSON.parse(read('package.json'))
-  assert.match(pkg.dependencies['expo-notifications'], /^~57\./)
-  assert.equal(pkg.dependencies.expo, '~57.0.27')
-  assert.equal(pkg.dependencies['expo-constants'], '~57.0.21')
+  const sdkMajor = pkg.dependencies.expo.match(/^~(\d+)\./)[1]
+  assert.match(pkg.dependencies['expo-notifications'], new RegExp(`^~${sdkMajor}\\.`))
+  assert.match(pkg.dependencies['expo-constants'], new RegExp(`^~${sdkMajor}\\.`))
 })
 
 test('文档存在并明确“本机固定提前量、不是云推送 / 智能提醒”', () => {

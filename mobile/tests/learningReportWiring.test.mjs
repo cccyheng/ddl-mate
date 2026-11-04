@@ -132,8 +132,8 @@ test('不引入图表库或新依赖：package.json 依赖集合保持本轮基�
 /* ------------------------------ 路由与入口 ------------------------------ */
 
 test('任务栈与今天栈都注册了 LearningReport，并使用同一个原生屏幕', () => {
-  assert.match(NAV_TYPES, /export type TaskStackParamList = \{[\s\S]*?LearningReport: undefined[\s\S]*?\}/)
-  assert.match(NAV_TYPES, /export type TodayStackParamList = \{[\s\S]*?LearningReport: undefined[\s\S]*?\}/)
+  assert.match(NAV_TYPES, /export type TaskStackParamList = (?:CourseStackParamList & )?\{[\s\S]*?LearningReport: undefined[\s\S]*?\}/)
+  assert.match(NAV_TYPES, /export type TodayStackParamList = (?:CourseStackParamList & )?\{[\s\S]*?LearningReport: undefined[\s\S]*?\}/)
   assert.match(NAV_TYPES, /SharedLearningReportRoutes = Pick<TodayStackParamList, 'LearningReport' \| 'TaskDetail'/)
   assert.match(ROOT_NAV, /import \{ LearningReportScreen \} from '\.\.\/screens\/LearningReportScreen'/)
   assert.equal([...ROOT_NAV.matchAll(/<TaskStack\.Screen\s+name="LearningReport"/g)].length, 1)

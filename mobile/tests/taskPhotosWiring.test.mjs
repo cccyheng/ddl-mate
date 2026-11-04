@@ -32,7 +32,7 @@ function withoutComments(source) {
 test('路由类型：今天栈与任务栈都声明了 TaskPhotos，参数共用 { id: number }', () => {
   const types = read('navigation/types.ts')
   const taskStack = types.slice(types.indexOf('TaskStackParamList'), types.indexOf('TodayStackParamList'))
-  const todayStack = types.slice(types.indexOf('TodayStackParamList'), types.indexOf('CourseStackParamList'))
+  const todayStack = types.slice(types.indexOf('TodayStackParamList'), types.indexOf('export type CourseStackParamList'))
   assert.match(taskStack, /TaskPhotos: \{ id: number \}/, '任务栈要有 TaskPhotos 路由')
   assert.match(todayStack, /TaskPhotos: \{ id: number \}/, '今天栈要有 TaskPhotos 路由')
   assert.match(types, /SharedTaskRoutesWithPhotos/, '任务详情用带 TaskPhotos 的窄类型')

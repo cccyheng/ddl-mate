@@ -22,7 +22,7 @@ test('AppStore：通知导入复用公共串行队列，没有新建独立写队
   const source = readFileSync(join(here, '..', 'src', 'store', 'AppStore.tsx'), 'utf8')
   assert.match(
     source,
-    /importNoticeCandidates:\s*\(request\)\s*=>\s*\n?\s*enqueue\(/,
+    /importNoticeCandidates:\s*(?:async\s*)?\(request\)\s*=>\s*(?:\{[\s\S]{0,80}?await\s+)?\n?\s*enqueue\(/,
     '通知导入必须走 enqueue（公共队列）',
   )
   assert.ok(!/noticeImportQueue/.test(source), '不应存在独立的通知导入队列')

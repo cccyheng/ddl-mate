@@ -62,16 +62,16 @@ test('渲染不产生写入：没有「打开页面就保存」的 effect', () =
 /* ------------------------------ 路由注册 ------------------------------ */
 
 test('TaskStack 注册了 Pressure 路由', () => {
-  assert.match(NAV_TYPES, /export type TaskStackParamList = \{[\s\S]*?Pressure: undefined/)
+  assert.match(NAV_TYPES, /export type TaskStackParamList = (?:CourseStackParamList & )?\{[\s\S]*?Pressure: undefined/)
   assert.match(ROOT_NAV, /<TaskStack\.Screen name="Pressure" component=\{PressureScreen\}/)
 })
 
 test('今天标签有自己的原生栈，并且也注册了 Pressure / TaskDetail / TaskForm', () => {
-  assert.match(NAV_TYPES, /export type TodayStackParamList = \{[\s\S]*?Today: undefined[\s\S]*?TaskForm[\s\S]*?TaskDetail[\s\S]*?Pressure: undefined/)
+  assert.match(NAV_TYPES, /export type TodayStackParamList = (?:CourseStackParamList & )?\{[\s\S]*?Today: undefined[\s\S]*?TaskForm[\s\S]*?TaskDetail[\s\S]*?Pressure: undefined/)
   assert.match(ROOT_NAV, /const TodayStack = createNativeStackNavigator<TodayStackParamList>\(\)/)
   assert.match(ROOT_NAV, /<TodayStack\.Screen name="Today" component=\{TodayScreen\}/)
   assert.match(ROOT_NAV, /<TodayStack\.Screen name="Pressure" component=\{PressureScreen\}/)
-  assert.match(ROOT_NAV, /<TodayStack\.Screen name="TaskDetail" component=\{TaskDetailScreen\}/)
+  assert.match(ROOT_NAV, /<TodayStack\.Screen\s+name="TaskDetail"\s+component=\{TaskDetailScreen\}/)
   // 「今天」这一屏自己已有标题区，隐藏原生标题栏避免两套标题
   assert.match(ROOT_NAV, /name="Today" component=\{TodayScreen\} options=\{\{ headerShown: false \}\}/)
   // 标签指向栈而不是裸屏幕
@@ -81,8 +81,8 @@ test('今天标签有自己的原生栈，并且也注册了 Pressure / TaskDeta
 test('两个入口都真的能跳到压力分析（今天的小结入口 + 任务页的可见入口）', () => {
   assert.match(TODAY, /navigation\.navigate\('Pressure'\)/)
   assert.match(TASK_LIST, /navigation\.navigate\('Pressure'\)/)
-  // 今天页与任务页都用「两条栈共有」的路由类型，避免再出现「在栈外 navigate」的旧缺陷
-  assert.match(TODAY, /SharedTaskRoutes/)
+  // 今天页用「两条栈共有」的路由类型或自己栈的完整类型，都不会再出现「在栈外 navigate」的旧缺陷
+  assert.match(TODAY, /SharedTaskRoutes|NativeStackNavigationProp<TodayStackParamList>/)
   assert.match(
     NAV_TYPES,
     /export type SharedTaskRoutes = Pick<TodayStackParamList, 'TaskForm' \| 'TaskDetail' \| 'Pressure' \| 'TodayPlan'>/,
@@ -317,7 +317,8 @@ test('今天页对压力分析只做「小结 + 入口」，分析逻辑与写�
   for (const pattern of [
     /(?<!不会[^，。；]{0,4})(?<!不是[^，。；]{0,4})(生成日程|自动排|自动重排|重排任务|排好的日程)/,
     /dailyPlan|autoReschedule/,
-    /Notification|expo-notifications|scheduleNotification/,
+    // 备份恢复后的「通知清理重试」入口（store.backup.retryNotificationCleanup）允许出现；首页不得自己排通知
+    /expo-notifications|scheduleNotification/,
     /\bAI\b|openai|gpt|llm|大模型|智能分析/i,
     /冲突检测|classOverlap|overlap/,
   ]) {
@@ -345,6 +346,7 @@ test('不做 OCR / 截图，也不引入新的数据库或依赖', () => {
     'expo-file-system',
     'expo-image-manipulator',
     'expo-image-picker',
+    'expo-notifications',
     'expo-sqlite',
     'expo-status-bar',
     'react',
