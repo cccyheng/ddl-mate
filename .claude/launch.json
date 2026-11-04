@@ -7,6 +7,14 @@
       "runtimeArgs": ["node_modules/vite/bin/vite.js", "--port", "5173", "--strictPort"],
       "cwd": "frontend",
       "port": 5173
+    },
+    {
+      "name": "web-dev-qa",
+      "runtimeExecutable": "C:\\Users\\33284\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.exe",
+      "runtimeArgs": ["node_modules/vite/bin/vite.js", "--port", "5174", "--strictPort"],
+      "cwd": "frontend",
+      "port": 5174,
+      "env": { "DDLMATE_API_TARGET": "http://127.0.0.1:8090" }
     }
   ]
 }

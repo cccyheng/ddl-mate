@@ -31,7 +31,8 @@ export default defineConfig({
     },
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:8080',
+        // 开发时可用 DDLMATE_API_TARGET 指向另一个后端（例如隔离测试库的 8090）
+        target: process.env.DDLMATE_API_TARGET || 'http://127.0.0.1:8080',
         changeOrigin: false,
       },
     },

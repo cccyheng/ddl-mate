@@ -6,6 +6,7 @@ import AppIcon from '@/components/AppIcon.vue'
 import CountdownBadge from '@/components/CountdownBadge.vue'
 import ErrorState from '@/components/ErrorState.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import HomeStudyStrip from '@/components/HomeStudyStrip.vue'
 import LoadingState from '@/components/LoadingState.vue'
 import TaskItem from '@/components/TaskItem.vue'
 import { formatClock, formatDateTime, greeting, todayLabel } from '@/utils/datetime'
@@ -141,6 +142,8 @@ onMounted(load)
           <span class="stat__hint">全部历史</span>
         </div>
       </div>
+
+      <HomeStudyStrip />
 
       <RouterLink class="notice-cta" to="/tasks/import-notices">
         <span class="notice-cta__icon" aria-hidden="true"><AppIcon name="spark" :size="20" /></span>

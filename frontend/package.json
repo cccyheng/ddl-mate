@@ -15,7 +15,8 @@
     "preview": "vite preview",
     "test:parser": "node tests/timetableParser.test.mjs",
     "ocr:smoke": "node scripts/ocr-smoke.mjs",
-    "ocr:weekgrid": "node scripts/ocr-weekgrid-node.mjs"
+    "ocr:weekgrid": "node scripts/ocr-weekgrid-node.mjs",
+    "test:domain": "node --import ../mobile/tests/setup.mjs --test --experimental-test-isolation=none tests/domainBridge.test.mjs"
   },
   "dependencies": {
     "vue": "3.5.13",

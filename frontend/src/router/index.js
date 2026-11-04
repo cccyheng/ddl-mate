@@ -75,6 +75,25 @@ const routes = [
     component: () => import('@/views/AboutView.vue'),
     meta: { title: '路线图与说明' },
   },
+  { path: '/focus', name: 'focus', component: () => import('@/views/FocusView.vue'), meta: { title: '专注' } },
+  {
+    path: '/plan/today',
+    name: 'today-plan',
+    component: () => import('@/views/TodayPlanView.vue'),
+    meta: { title: '今日学习计划' },
+  },
+  {
+    path: '/plan/pressure',
+    name: 'pressure',
+    component: () => import('@/views/PressureView.vue'),
+    meta: { title: 'DDL 压力分析' },
+  },
+  {
+    path: '/plan/report',
+    name: 'learning-report',
+    component: () => import('@/views/LearningReportView.vue'),
+    meta: { title: '学习周报' },
+  },
   { path: '/:pathMatch(.*)*', name: 'not-found', component: () => import('@/views/NotFoundView.vue') },
 ]
 
