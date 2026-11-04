@@ -1,6 +1,9 @@
 package com.ddlmate.config;
 
+import java.util.concurrent.TimeUnit;
+
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.CacheControl;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -27,8 +30,13 @@ public class WebConfig implements WebMvcConfigurer {
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         // 前端构建产物（frontend/dist 或 Maven 构建时复制的静态资源）由后端托管：
         // 访问 http://127.0.0.1:8080/ 即可看到界面，无需再开前端服务。
+        // assets/ 下的文件名带内容哈希，可以长期缓存；index.html 等入口必须每次重新验证，
+        // 否则更新后浏览器会继续用旧入口、加载旧界面，最长一小时。
+        registry.addResourceHandler("/assets/**")
+                .addResourceLocations("classpath:/static/assets/")
+                .setCacheControl(CacheControl.maxAge(365, TimeUnit.DAYS).cachePublic().immutable());
         registry.addResourceHandler("/**")
                 .addResourceLocations("classpath:/static/")
-                .setCachePeriod(3600);
+                .setCacheControl(CacheControl.noCache());
     }
 }
