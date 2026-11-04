@@ -4,12 +4,10 @@ import { RouterLink } from 'vue-router'
 import { CLASS_REMINDER_LEADS, decodeClassReminderSettings, defaultClassReminderSettings } from '@domain/classReminder'
 import {
   decodeTaskReminder,
-  encodeTaskReminder,
   evaluateTaskReminderEligibility,
   formatReminderMoment,
   MAX_ENABLED_TASK_REMINDERS,
   REMINDER_LEAD_OPTIONS,
-  TASK_REMINDER_VERSION,
 } from '@domain/taskReminder'
 import AppIcon from '@/components/AppIcon.vue'
 import ErrorState from '@/components/ErrorState.vue'
@@ -18,6 +16,7 @@ import { settingsApi } from '@/api'
 import { notify, reminderState, remindersChanged } from '@/composables/reminderScheduler'
 import { useSetting } from '@/composables/useSetting'
 import { loadAllTasks, toDomainTask } from '@/domain/adapters'
+import { saveTaskReminder } from '@/domain/reminderStore'
 import { SETTING_KEYS } from '@/domain/settingKeys'
 
 const classSetting = useSetting(SETTING_KEYS.CLASS_REMINDER, {
@@ -74,18 +73,9 @@ async function setLead(task, value) {
       return
     }
   }
-  const intent = {
-    version: TASK_REMINDER_VERSION,
-    taskId: task.id,
-    enabled: lead > 0,
-    leadMinutes: lead || current?.intent?.leadMinutes || 30,
-    revision: (current?.intent?.revision ?? 0) + 1,
-    updatedAt: new Date().toISOString(),
-  }
   try {
-    const saved = await settingsApi.put(SETTING_KEYS.taskReminder(task.id), encodeTaskReminder(intent), current?.revision ?? 0)
-    rows.value = new Map(rows.value).set(task.id, { revision: saved.revision, intent })
-    remindersChanged()
+    const saved = await saveTaskReminder(task.id, lead, current)
+    rows.value = new Map(rows.value).set(task.id, saved)
   } catch (err) {
     rowError.value = { ...rowError.value, [task.id]: err.message }
     await load()

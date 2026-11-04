@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
 import { shanghaiToday } from '@domain/datetime'
 import {
   buildTodayPlan,
@@ -26,6 +26,9 @@ import {
   toDomainSchedule,
   toDomainTask,
 } from '@/domain/adapters'
+import { focusRouteFor } from '@/domain/links'
+
+const route = useRoute()
 
 const saved = useSetting('daily_plan.today', {
   decode: (raw) => (raw === null ? null : parseTodayPlanPayload(raw)),
@@ -54,6 +57,25 @@ const todaysSaved = computed(() => {
   const value = saved.data.value
   return value && isPlanForToday(value.plan.date, new Date()) ? value.plan : null
 })
+
+/** 还没结束的时间块（正在进行或还没开始）才显示「专注」入口。 */
+function blockIsCurrentOrNext(block) {
+  const minute = shanghaiMinuteOfDay(new Date())?.minute ?? 0
+  return block.endMinute > minute
+}
+
+/** 从 DDL 压力「为这天安排」跳过来：预选那天到期的未完成任务。 */
+function preselectFromRoute() {
+  const ids = String(route.query.tasks ?? '')
+    .split(',')
+    .map(Number)
+    .filter((id) => Number.isSafeInteger(id) && id > 0)
+  for (const id of ids) {
+    const task = activeTasks.value.find((t) => t.id === id)
+    if (task && selected[id] === undefined && selectedCount.value < MAX_SELECTED_TASKS) toggleTask(task)
+  }
+  if (ids.length) commitMessage.value = `已预选 ${Object.keys(selected).length} 个任务，设好时段后生成预览。`
+}
 
 function toggleTask(task) {
   if (selected[task.id] !== undefined) delete selected[task.id]
@@ -162,6 +184,7 @@ async function load() {
   error.value = ''
   try {
     await Promise.all([loadContext(), saved.load()])
+    preselectFromRoute()
   } catch (err) {
     error.value = err.message
   } finally {
@@ -203,7 +226,16 @@ onMounted(load)
           <div v-for="block in todaysSaved.blocks" :key="`${block.taskId}-${block.startMinute}`" class="plan-block">
             <span class="plan-block__time mono">{{ block.startTime }}–{{ block.endTime }}</span>
             <RouterLink :to="`/tasks/${block.taskId}`" class="plan-block__title">{{ block.taskTitle }}</RouterLink>
-            <span class="muted small">{{ block.minutes }} 分钟</span>
+            <span class="row plan-block__actions">
+              <span class="muted small">{{ block.minutes }} 分钟</span>
+              <RouterLink
+                v-if="blockIsCurrentOrNext(block)"
+                class="btn btn--sm btn--primary"
+                :to="focusRouteFor(block.taskId, block.minutes)"
+              >
+                <AppIcon name="play" :size="13" />专注
+              </RouterLink>
+            </span>
           </div>
           <p v-if="todaysSaved.blocks.length === 0" class="muted small">计划里没有时间块。</p>
         </div>
@@ -337,6 +369,11 @@ onMounted(load)
   font-weight: 600;
   color: var(--text);
   overflow-wrap: anywhere;
+}
+
+.plan-block__actions {
+  justify-content: flex-end;
+  flex-wrap: nowrap;
 }
 
 .plan-task {

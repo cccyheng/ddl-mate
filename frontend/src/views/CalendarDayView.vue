@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { scheduleApi, taskApi } from '@/api'
 import AppIcon from '@/components/AppIcon.vue'
+import CalendarDayExtras from '@/components/CalendarDayExtras.vue'
 import ErrorState from '@/components/ErrorState.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import LoadingState from '@/components/LoadingState.vue'
@@ -209,6 +210,8 @@ onBeforeUnmount(() => {
         </ul>
         <EmptyState v-else icon="check" title="这一天没有 DDL" description="当天没有截止的任务。" />
       </section>
+
+      <CalendarDayExtras :key="dateKey" :date-key="dateKey" />
     </template>
   </div>
 </template>

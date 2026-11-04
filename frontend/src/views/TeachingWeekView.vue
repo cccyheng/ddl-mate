@@ -6,14 +6,9 @@ import ErrorState from '@/components/ErrorState.vue'
 import LoadingState from '@/components/LoadingState.vue'
 import { settingsApi } from '@/api'
 import { SETTING_KEYS } from '@/domain/settingKeys'
+import { CALIBRATION_KEYS, calibrationFromRows, loadCalibrationRows } from '@/domain/teachingWeekStore'
 
-/** 校准用 4 个键（与手机端同名同格式）；读取时任一不一致都视为没有校准，绝不拼出半套数据。 */
-const KEYS = [
-  SETTING_KEYS.SEMESTER_START_MONDAY,
-  SETTING_KEYS.CALIBRATED_WEEK,
-  SETTING_KEYS.CALIBRATED_TODAY,
-  SETTING_KEYS.CALIBRATED_AT,
-]
+const KEYS = CALIBRATION_KEYS
 
 const loading = ref(true)
 const error = ref('')
@@ -24,21 +19,14 @@ const message = ref('')
 
 const today = todayInBeijing()
 
-const calibration = computed(() => {
-  const [monday, week, calibratedToday, setAt] = KEYS.map((key) => rows.value[key]?.value ?? null)
-  if (!monday || !week || !calibratedToday) return null
-  const recomputed = createCalibration(calibratedToday, Number(week), setAt ?? '')
-  if (!recomputed.ok || recomputed.calibration.semesterStartMonday !== monday) return null
-  return recomputed.calibration
-})
+const calibration = computed(() => calibrationFromRows(rows.value))
 const summary = computed(() => describeCalibration(calibration.value, today))
 
 async function load() {
   loading.value = true
   error.value = ''
   try {
-    const results = await Promise.all(KEYS.map((key) => settingsApi.get(key)))
-    rows.value = Object.fromEntries(results.map((r) => [r.key, r]))
+    rows.value = await loadCalibrationRows()
   } catch (err) {
     error.value = err.message
   } finally {
@@ -66,6 +54,7 @@ async function save() {
     }
     draft.value = ''
     message.value = '已保存。'
+    window.dispatchEvent(new Event('ddlmate:teaching-week-changed'))
   } catch (err) {
     message.value = `保存失败：${err.message}（请刷新后重试）`
     await load()

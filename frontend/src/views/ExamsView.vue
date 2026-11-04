@@ -11,6 +11,7 @@ import { taskApi } from '@/api'
 import { useSetting } from '@/composables/useSetting'
 import { loadAllCourses, loadAllTasks, toDomainTask } from '@/domain/adapters'
 import { SETTING_KEYS } from '@/domain/settingKeys'
+import { revisionProgress } from '@/domain/links'
 import { deadlineForWeb } from '@/domain/taskTypes'
 import { shiftDateKey } from '@/utils/dateKeys'
 
@@ -29,6 +30,8 @@ const active = computed(() => exams.value.filter((e) => ['today', 'upcoming', 'u
 const past = computed(() => exams.value.filter((e) => !['today', 'upcoming', 'undated'].includes(e.phase)))
 const courseName = (id) => courses.value.find((c) => c.id === id)?.name
 const plansFor = (examId) => (plans.data.value?.plans ?? []).filter((p) => p.examId === examId)
+const tasksById = computed(() => new Map(tasks.value.map((t) => [t.id, t])))
+const progressOf = (exam) => revisionProgress(plans.data.value?.plans ?? [], exam.task.id, tasksById.value)
 
 const PHASE_TONE = { today: 'danger', upcoming: 'primary', undated: 'warn', overdue: 'muted', done: 'success', cancelled: 'muted' }
 const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日']
@@ -181,10 +184,18 @@ onMounted(load)
             {{ courseName(exam.task.courseId) || '未关联课程' }}
             <template v-if="exam.task.deadline"> · {{ exam.task.deadline.slice(0, 16).replace('T', ' ') }}</template>
           </p>
-          <p v-if="plansFor(exam.task.id).length" class="small" style="margin: 8px 0 0">
-            已有 {{ plansFor(exam.task.id).length }} 份复习安排（共
-            {{ plansFor(exam.task.id).reduce((n, p) => n + p.taskIds.length, 0) }} 次）
-          </p>
+          <template v-if="plansFor(exam.task.id).length">
+            <div class="row row--between small" style="margin-top: 8px">
+              <span>复习进度 {{ progressOf(exam).done }}/{{ progressOf(exam).total }}</span>
+              <span v-if="progressOf(exam).missing" class="muted">{{ progressOf(exam).missing }} 个已删除</span>
+            </div>
+            <span class="progress">
+              <span
+                class="progress__bar"
+                :style="{ width: `${progressOf(exam).total ? (progressOf(exam).done / progressOf(exam).total) * 100 : 0}%` }"
+              />
+            </span>
+          </template>
           <div class="row" style="margin-top: auto; padding-top: 12px">
             <button type="button" class="btn btn--sm btn--primary" :disabled="exam.phase !== 'upcoming'" @click="openRevision(exam)">
               安排复习

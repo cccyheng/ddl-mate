@@ -5,6 +5,7 @@ import { profileApi } from '@/api'
 import AppIcon from '@/components/AppIcon.vue'
 import ReminderToasts from '@/components/ReminderToasts.vue'
 import { startReminderScheduler } from '@/composables/reminderScheduler'
+import { currentTeachingWeek } from '@/domain/teachingWeekStore'
 import { todayLabel } from '@/utils/datetime'
 import { readPreference, writePreference } from '@/utils/preferences'
 import { applyTheme, nextTheme, THEME_LABELS } from '@/utils/theme'
@@ -121,10 +122,18 @@ watch(
   { immediate: true },
 )
 
+/* ---------- 顶栏教学周 ---------- */
+const teachingWeek = ref(null)
+async function refreshTeachingWeek() {
+  teachingWeek.value = await currentTeachingWeek().catch(() => null)
+}
+
 onMounted(async () => {
+  window.addEventListener('ddlmate:teaching-week-changed', refreshTeachingWeek)
   try {
     profile.value = await profileApi.get()
     startReminderScheduler()
+    refreshTeachingWeek()
   } catch (error) {
     profileError.value = error.message
   }
@@ -214,7 +223,12 @@ onMounted(async () => {
           </form>
           <span v-else class="topbar__search" aria-hidden="true" />
 
-          <span class="topbar__date">{{ todayText }}</span>
+          <span class="topbar__date">
+            {{ todayText }}
+            <RouterLink v-if="teachingWeek" class="topbar__week" to="/tools/teaching-week" title="教学周">
+              第 {{ teachingWeek }} 周
+            </RouterLink>
+          </span>
           <button
             type="button"
             class="icon-btn"
@@ -251,5 +265,18 @@ onMounted(async () => {
   .topbar__collapse {
     display: none;
   }
+}
+
+.topbar__week {
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  font-weight: 600;
+}
+
+.topbar__week:hover {
+  text-decoration: none;
 }
 </style>

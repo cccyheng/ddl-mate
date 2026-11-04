@@ -24,7 +24,8 @@ import {
 import AppIcon from '@/components/AppIcon.vue'
 import ErrorState from '@/components/ErrorState.vue'
 import LoadingState from '@/components/LoadingState.vue'
-import { courseApi } from '@/api'
+import { useRoute } from 'vue-router'
+import { courseApi, taskApi } from '@/api'
 import { useSetting } from '@/composables/useSetting'
 import { dateKeyOf, shiftDateKey, weekdayShort } from '@/utils/dateKeys'
 
@@ -37,8 +38,15 @@ const actionError = ref('')
 const now = ref(Date.now())
 let ticker = null
 
+const route = useRoute()
 const form = reactive({ mode: 'pomodoro', title: '', courseName: '', focusMinutes: 25, restMinutes: 5 })
-const FOCUS_PRESETS = [15, 25, 45, 60, 90]
+const BASE_FOCUS_PRESETS = [15, 25, 45, 60, 90]
+/** 从今日计划带来的分钟数不在常用档位里时，临时加一个档位，方便看到当前选择。 */
+const FOCUS_PRESETS = computed(() =>
+  BASE_FOCUS_PRESETS.includes(Number(form.focusMinutes))
+    ? BASE_FOCUS_PRESETS
+    : [...BASE_FOCUS_PRESETS, Number(form.focusMinutes)].sort((a, b) => a - b),
+)
 const REST_PRESETS = [5, 10, 15]
 
 const store = computed(() => focus.data.value)
@@ -201,10 +209,32 @@ onMounted(async () => {
   try {
     const [, , courseList] = await Promise.all([focus.load(), goals.load(), courseApi.list()])
     courses.value = courseList
+    await prefillFromRoute()
   } catch (err) {
     loadError.value = err.message
   }
 })
+
+/** 从任务详情 / 今日计划跳过来：带上任务名、课程和计划分钟数（已有计时进行中时不覆盖）。 */
+const prefillNote = ref('')
+async function prefillFromRoute() {
+  const taskId = Number(route.query.taskId)
+  if (!Number.isSafeInteger(taskId) || taskId <= 0) return
+  if (store.value?.active) {
+    prefillNote.value = '已有一次专注正在进行，先结束它再开始新的。'
+    return
+  }
+  const task = await taskApi.get(taskId).catch(() => null)
+  if (!task) return
+  form.title = task.title.slice(0, 200)
+  form.courseName = task.course?.name ?? ''
+  const minutes = Number(route.query.minutes)
+  if (Number.isInteger(minutes) && minutes >= 1) {
+    form.mode = 'pomodoro'
+    form.focusMinutes = Math.min(180, minutes)
+  }
+  prefillNote.value = `已带入任务「${task.title}」${form.mode === 'pomodoro' ? `，专注 ${form.focusMinutes} 分钟` : ''}。`
+}
 
 onBeforeUnmount(() => {
   window.clearInterval(ticker)
@@ -282,6 +312,7 @@ onBeforeUnmount(() => {
           </div>
         </div>
         <div v-if="actionError" class="alert alert--danger">{{ actionError }}</div>
+        <div v-if="prefillNote && !active" class="alert alert--success">{{ prefillNote }}</div>
 
         <!-- 未开始：设置 -->
         <div v-if="!active" class="stack focus-setup">

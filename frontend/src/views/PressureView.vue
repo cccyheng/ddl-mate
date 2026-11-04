@@ -168,6 +168,13 @@ onMounted(load)
                   <template v-if="day.unknownEstimateCount"> · {{ day.unknownEstimateCount }} 个缺用时</template>
                   <template v-if="day.excessMinutes"> · 超出 {{ formatMinutes(day.excessMinutes) }}</template>
                 </div>
+                <RouterLink
+                  v-if="day.tasks.length"
+                  class="btn btn--sm pressure-day__plan"
+                  :to="{ name: 'today-plan', query: { tasks: day.tasks.map((t) => t.id).join(',') } }"
+                >
+                  <AppIcon name="target" :size="14" />今天推进这些
+                </RouterLink>
                 <div v-if="day.tasks.length" class="row pressure-day__tasks">
                   <RouterLink v-for="task in day.tasks" :key="task.id" class="chip" :to="`/tasks/${task.id}`">
                     {{ task.title }}
@@ -244,6 +251,10 @@ onMounted(load)
 
 <style scoped>
 .pressure-day__tasks {
+  margin-top: 8px;
+}
+
+.pressure-day__plan {
   margin-top: 8px;
 }
 

@@ -14,6 +14,7 @@ import AppIcon from '@/components/AppIcon.vue'
 import { useSetting } from '@/composables/useSetting'
 
 const props = defineProps({ taskId: { type: Number, required: true } })
+const emit = defineEmits(['all-done'])
 
 /** data = { revision, steps }；从未保存过时 revision = 0。 */
 const setting = useSetting(() => `task_steps.${props.taskId}`, {
@@ -53,7 +54,11 @@ async function addStep() {
   if (await commit([...steps.value, { id: newId(), title, done: false }])) draft.value = ''
 }
 
-const toggle = (step) => commit(steps.value.map((s) => (s.id === step.id ? { ...s, done: !s.done } : s)))
+async function toggle(step) {
+  const next = steps.value.map((s) => (s.id === step.id ? { ...s, done: !s.done } : s))
+  // 只在「这一下把清单勾满」时通知父页面，由用户决定要不要标记任务完成
+  if ((await commit(next)) && !step.done && next.every((s) => s.done)) emit('all-done')
+}
 const remove = (step) => commit(steps.value.filter((s) => s.id !== step.id))
 
 function move(index, delta) {

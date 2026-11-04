@@ -6,6 +6,7 @@ import AppIcon from '@/components/AppIcon.vue'
 import CountdownBadge from '@/components/CountdownBadge.vue'
 import ErrorState from '@/components/ErrorState.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import HomeNextUp from '@/components/HomeNextUp.vue'
 import HomeStudyStrip from '@/components/HomeStudyStrip.vue'
 import LoadingState from '@/components/LoadingState.vue'
 import TaskItem from '@/components/TaskItem.vue'
@@ -143,6 +144,7 @@ onMounted(load)
         </div>
       </div>
 
+      <HomeNextUp />
       <HomeStudyStrip />
 
       <RouterLink class="notice-cta" to="/tasks/import-notices">

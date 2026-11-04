@@ -117,3 +117,23 @@ test('重复任务草稿 → 网页创建请求：墙上时间补 +08:00，只�
   assert.equal(body.description, null)
   assert.equal(body.deadline, '2026-11-09T23:59:00+08:00')
 })
+
+test('联动：专注按任务名 + 课程匹配；复习进度与所属考试互查', async () => {
+  const { focusForTask, focusRouteFor, revisionPlanOf, revisionProgress } = await import('../src/domain/links.js')
+  const t0 = Date.parse('2026-11-04T10:00:00+08:00')
+  let store = applyFocusAction(emptyFocus(), { type: 'start', title: '操作系统实验报告', courseName: '数据结构' }, t0)
+  store = applyFocusAction(store, { type: 'finish' }, t0 + 20 * 60000)
+  store = applyFocusAction(store, { type: 'start', title: '操作系统实验报告', courseName: '大学英语' }, t0 + 30 * 60000)
+  store = applyFocusAction(store, { type: 'finish' }, t0 + 40 * 60000)
+  const summary = focusForTask(store, webTask())
+  assert.equal(summary.count, 1, '课程不同的同名记录不算')
+  assert.equal(summary.ms, 20 * 60000)
+  assert.deepEqual(focusRouteFor(7, 45), { name: 'focus', query: { taskId: '7', minutes: '45' } })
+  assert.deepEqual(focusRouteFor(7), { name: 'focus', query: { taskId: '7' } })
+
+  const plans = [{ id: 1, examId: 70, examTitle: '期中考试', createdAt: 'x', fingerprint: 'f', taskIds: [71, 72, 73] }]
+  const tasks = new Map([[71, { status: 'DONE' }], [72, { status: 'TODO' }]])
+  assert.deepEqual(revisionProgress(plans, 70, tasks), { total: 2, done: 1, missing: 1 })
+  assert.deepEqual(revisionPlanOf(plans, 72), { examId: 70, examTitle: '期中考试' })
+  assert.equal(revisionPlanOf(plans, 99), null)
+})

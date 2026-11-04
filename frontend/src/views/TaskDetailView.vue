@@ -6,6 +6,7 @@ import AppIcon from '@/components/AppIcon.vue'
 import AttachmentGallery from '@/components/AttachmentGallery.vue'
 import ErrorState from '@/components/ErrorState.vue'
 import LoadingState from '@/components/LoadingState.vue'
+import TaskLinksPanel from '@/components/TaskLinksPanel.vue'
 import TaskStepsPanel from '@/components/TaskStepsPanel.vue'
 import { formatDateTime, remainingLabel } from '@/utils/datetime'
 
@@ -18,6 +19,8 @@ const error = ref('')
 const task = ref(null)
 const sources = ref([])
 const busy = ref(false)
+/** 步骤清单刚被勾满时提示一次「标记完成」；不会自动改任务状态。 */
+const stepsAllDone = ref(false)
 
 const sourceForm = reactive({ sourceName: '', rawText: '', sourceType: 'WECHAT_GROUP' })
 const uploadFiles = ref([])
@@ -209,7 +212,18 @@ onMounted(load)
         </dl>
       </section>
 
-      <TaskStepsPanel :task-id="task.id" />
+      <TaskLinksPanel :key="`links-${task.id}-${task.status}`" :task="task" />
+
+      <div
+        v-if="stepsAllDone && (task.status === 'TODO' || task.status === 'DOING')"
+        class="alert alert--success steps-done"
+      >
+        <span>步骤都勾完了，要把任务标记为完成吗？</span>
+        <button type="button" class="btn btn--sm btn--primary" :disabled="busy" @click="changeStatus('DONE').then(() => (stepsAllDone = false))">标记完成</button>
+        <button type="button" class="btn btn--sm btn--ghost" @click="stepsAllDone = false">先不</button>
+      </div>
+
+      <TaskStepsPanel :task-id="task.id" @all-done="stepsAllDone = true" />
 
       <section class="card">
         <div class="card__head">
@@ -295,3 +309,17 @@ onMounted(load)
     </template>
   </div>
 </template>
+
+<style scoped>
+.steps-done {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.steps-done span {
+  flex: 1 1 200px;
+}
+</style>
