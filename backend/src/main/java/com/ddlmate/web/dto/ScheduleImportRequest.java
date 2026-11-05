@@ -31,7 +31,30 @@ public record ScheduleImportRequest(
         @Valid
         @NotNull(message = "课表列表不能为空")
         @Size(min = 1, max = 300, message = "一次导入的课表条数必须在 1-300 之间")
-        List<ImportSchedule> schedules) {
+        List<ImportSchedule> schedules,
+
+        /** 以导入数据为准：先更新这些已有课程的任课教师。 */
+        @Valid
+        @Size(max = 100, message = "一次最多更新 100 门课程")
+        List<CourseUpdate> courseUpdates,
+
+        /** 以导入数据为准：先删除这些已有课程原来的全部课表，再写入本次的课表（同一事务）。 */
+        @Size(max = 100, message = "一次最多替换 100 门课程的课表")
+        List<Long> replaceScheduleCourseIds) {
+
+    /** 旧调用方（只导入、不替换）的便捷构造。 */
+    public ScheduleImportRequest(List<ImportCourse> courses, List<ImportSchedule> schedules) {
+        this(courses, schedules, null, null);
+    }
+
+    /** 更新已有课程的任课教师。 */
+    public record CourseUpdate(
+            @NotNull(message = "课程 ID 不能为空")
+            Long id,
+
+            @Size(max = 64, message = "任课教师最长 64 个字符")
+            String instructor) {
+    }
 
     /** 本次新建的课程。ref 只在本次请求内有效。 */
     public record ImportCourse(
@@ -100,6 +123,9 @@ public record ScheduleImportRequest(
             Integer endWeek,
 
             @Size(max = 8, message = "上课周次规律非法")
-            String weekPattern) {
+            String weekPattern,
+
+            @Size(max = 128, message = "任课教师最长 128 个字符")
+            String teacher) {
     }
 }

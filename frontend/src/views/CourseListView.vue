@@ -43,6 +43,7 @@ const scheduleForm = reactive({
   startTime: '08:00',
   endTime: '09:40',
   location: '',
+  teacher: '',
   periodStart: '',
   periodEnd: '',
   weekRange: '1-16',
@@ -161,6 +162,7 @@ function resetScheduleForm() {  editingScheduleId.value = null
     startTime: '08:00',
     endTime: '09:40',
     location: '',
+    teacher: '',
     periodStart: '',
     periodEnd: '',
     weekRange: lastScheduleWeeks.weekRange,
@@ -180,6 +182,7 @@ function startEditSchedule(schedule) {
     startTime: formatClock(schedule.startTime),
     endTime: formatClock(schedule.endTime),
     location: schedule.location || '',
+    teacher: schedule.teacher || '',
     periodStart: schedule.periodStart || '',
     periodEnd: schedule.periodEnd || '',
     weekRange: schedule.weekRange || '',
@@ -204,6 +207,7 @@ async function saveSchedule() {
     startTime: scheduleForm.startTime,
     endTime: scheduleForm.endTime,
     location: scheduleForm.location.trim() || null,
+    teacher: scheduleForm.teacher.trim() || null,
     periodStart: scheduleForm.periodStart === '' ? null : Number(scheduleForm.periodStart),
     periodEnd: scheduleForm.periodEnd === '' ? null : Number(scheduleForm.periodEnd),
     weekRange: scheduleForm.weekRange.trim() || null,
@@ -388,6 +392,7 @@ onMounted(load)
                   <div class="task-item__meta">
                     <span>{{ formatClock(schedule.startTime) }} – {{ formatClock(schedule.endTime) }}</span>
                     <span v-if="schedule.location">{{ schedule.location }}</span>
+                    <span v-if="schedule.teacher">{{ schedule.teacher }}</span>
                     <span v-if="schedule.periodStart">第 {{ schedule.periodStart }}–{{ schedule.periodEnd }} 节</span>
                     <span>{{ schedule.weekSummary }}</span>
                     <span v-if="!schedule.teachingWeeksConfigured" class="badge badge--warn">
@@ -444,6 +449,10 @@ onMounted(load)
           <label class="field">
             <span class="field__label">地点</span>
             <input v-model="scheduleForm.location" type="text" maxlength="128" placeholder="教三 305" />
+          </label>
+          <label class="field">
+            <span class="field__label">这节课的教师</span>
+            <input v-model="scheduleForm.teacher" type="text" maxlength="128" placeholder="留空则按课程的任课教师" />
           </label>
           <label class="field">
             <span class="field__label">起始节次</span>

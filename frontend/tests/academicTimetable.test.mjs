@@ -81,6 +81,18 @@ test('records for the same class slot merge teachers and rooms per week', () => 
   assert.equal(intro[0].teacher, '甲、乙')
 })
 
+test('course instructor lists every teacher of the course, most classes first', () => {
+  const json = courseTake([
+    { name: '电路', teacher: '王', classroom: 'A', weeks: '1', startSection: '3', endSection: '4', range: bits([1, 2, 3, 4, 5, 6, 7, 8]) },
+    { name: '电路', teacher: '俞', classroom: '实验室', weeks: '2', startSection: '5', endSection: '6', range: bits([13]) },
+    { name: '电路', teacher: '于', classroom: '实验室', weeks: '2', startSection: '5', endSection: '6', range: bits([13, 14]) },
+  ])
+  const rows = parseAcademicTimetable(json).candidates
+  assert.ok(rows.every((r) => r.instructor === '王、于、俞'))
+  const lab13 = rows.find((r) => r.weekday === 2 && r.startWeek === 13)
+  assert.equal(lab13.teacher, '俞、于')
+})
+
 test('rooms that differ by week stay separate rows', () => {
   const json = courseTake([
     { name: 'C++', teacher: '郭', classroom: '102', weeks: '4', startSection: '3', endSection: '4', range: bits([1]) },

@@ -15,6 +15,8 @@ public record CourseScheduleResponse(
         LocalTime startTime,
         LocalTime endTime,
         String location,
+        /** 这一节的任课教师；为空时界面按课程的任课教师显示。 */
+        String teacher,
         Integer periodStart,
         Integer periodEnd,
         String weekRange,

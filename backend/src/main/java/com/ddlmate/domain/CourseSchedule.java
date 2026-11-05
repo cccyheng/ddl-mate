@@ -54,6 +54,10 @@ public class CourseSchedule {
     @Column(name = "location", length = 128)
     private String location;
 
+    /** 这一节的任课教师（实验课常与理论课不同）；为空时按课程的任课教师显示。 */
+    @Column(name = "teacher", length = 128)
+    private String teacher;
+
     /** 第几节开始，如 3。仅作展示，真实时间以 startTime 为准。 */
     @Column(name = "period_start")
     private Integer periodStart;
@@ -218,5 +222,13 @@ public class CourseSchedule {
 
     public Long getOwnerId() {
         return ownerId;
+    }
+
+    public String getTeacher() {
+        return teacher;
+    }
+
+    public void setTeacher(String teacher) {
+        this.teacher = teacher;
     }
 }

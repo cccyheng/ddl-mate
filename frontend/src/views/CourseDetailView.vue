@@ -24,6 +24,7 @@ const form = reactive({
   startTime: '08:00',
   endTime: '09:40',
   location: '',
+  teacher: '',
   periodStart: '',
   periodEnd: '',
   weekRange: '1-16',
@@ -58,6 +59,7 @@ function resetForm() {
     startTime: '08:00',
     endTime: '09:40',
     location: '',
+    teacher: '',
     periodStart: '',
     periodEnd: '',
     weekRange: '1-16',
@@ -76,6 +78,7 @@ function startEdit(schedule) {
     startTime: formatClock(schedule.startTime),
     endTime: formatClock(schedule.endTime),
     location: schedule.location || '',
+    teacher: schedule.teacher || '',
     periodStart: schedule.periodStart || '',
     periodEnd: schedule.periodEnd || '',
     weekRange: schedule.weekRange || '',
@@ -95,6 +98,7 @@ async function save() {
     startTime: form.startTime,
     endTime: form.endTime,
     location: form.location.trim() || null,
+    teacher: (form.teacher || '').trim() || null,
     periodStart: form.periodStart === '' ? null : Number(form.periodStart),
     periodEnd: form.periodEnd === '' ? null : Number(form.periodEnd),
     weekRange: form.weekRange.trim() || null,
@@ -183,6 +187,7 @@ onMounted(load)
               </div>
               <div class="task-item__meta">
                 <span v-if="schedule.location">{{ schedule.location }}</span>
+                <span v-if="schedule.teacher">{{ schedule.teacher }}</span>
                 <span v-if="schedule.periodStart">第 {{ schedule.periodStart }}–{{ schedule.periodEnd }} 节</span>
                 <span>{{ schedule.weekSummary }}</span>
             <span v-if="!schedule.teachingWeeksConfigured" class="badge badge--warn">建议补学期起点</span>
@@ -222,6 +227,10 @@ onMounted(load)
           <label class="field">
             <span class="field__label">地点</span>
             <input v-model="form.location" type="text" maxlength="128" />
+          </label>
+          <label class="field">
+            <span class="field__label">这节课的教师</span>
+            <input v-model="form.teacher" type="text" maxlength="128" placeholder="留空则按课程的任课教师" />
           </label>
           <label class="field">
             <span class="field__label">起始节次</span>

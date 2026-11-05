@@ -57,5 +57,16 @@ public record CourseScheduleRequest(
         Integer endWeek,
 
         @Size(max = 8, message = "上课周次规律非法")
-        String weekPattern) {
+        String weekPattern,
+
+        @Size(max = 128, message = "任课教师最长 128 个字符")
+        String teacher) {
+
+    /** 旧调用方（不带教师）的便捷构造。 */
+    public CourseScheduleRequest(Integer weekday, LocalTime startTime, LocalTime endTime, String location,
+            Integer periodStart, Integer periodEnd, String weekRange, LocalDate semesterStartDate,
+            Integer startWeek, Integer endWeek, String weekPattern) {
+        this(weekday, startTime, endTime, location, periodStart, periodEnd, weekRange, semesterStartDate,
+                startWeek, endWeek, weekPattern, null);
+    }
 }

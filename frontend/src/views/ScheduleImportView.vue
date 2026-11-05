@@ -40,6 +40,8 @@ const fileInput = ref(null)
 const dataFileInput = ref(null)
 /** 候选来自教务数据文件（而不是图片识别）时的来源说明。 */
 const dataSource = ref('')
+/** 以导入数据为准：已有的同名课程改用数据里的教师，并用数据替换它们原来的课表。 */
+const replaceWithData = ref(true)
 const MAX_DATA_FILE_BYTES = 30 * 1024 * 1024
 const imageUrl = ref('')
 const imageMeta = ref(null) // { name, width, height, scaled, size }
@@ -113,6 +115,14 @@ watch(() => JSON.stringify([semesterStartDate.value, selectedCandidates.value
 const blockReason = computed(() => importBlockReason(selectedCandidates.value, {
   courses: courses.value, gate: weekViewGate.value, semesterStartDate: semesterStartDate.value,
 }))
+/** 已有课程里不在导入数据中的（多半是照片识别时名字认错了），提示用户自行清理。 */
+const coursesNotInData = computed(() => {
+  if (!dataSource.value) return []
+  const names = new Set(ocrState.candidates.map((row) => normalizeName(row.courseName || row.name)))
+  const ids = new Set(ocrState.candidates.filter((row) => row.existingCourseId).map((row) => row.existingCourseId))
+  return courses.value.filter((course) => !ids.has(course.id) && !names.has(normalizeName(course.name)))
+})
+
 const canSubmit = computed(() => !submitting.value && !ocrState.running && !blockReason.value)
 
 /** 代码是否已被占用（已有课程或本批候选）。 */
@@ -438,6 +448,7 @@ function toEditable(candidate) {
       existingCourseId: null,
       code: '',
       teacher: '',
+      instructor: '',
       weekday: null,
       startTime: '',
       endTime: '',
@@ -468,6 +479,7 @@ function applyCandidateFields(row, candidate, keepSelection) {
     : preferredCode(candidate.code, row) ||
       (row.code && !codeTaken(row.code, row) ? row.code : suggestCode(row.courseName || row.name))
   if (candidate.teacher) row.teacher = candidate.teacher
+  if (candidate.instructor) row.instructor = candidate.instructor
   row.weekday = candidate.weekday ?? row.weekday ?? null
   row.startTime = candidate.startTime || row.startTime || ''
   row.endTime = candidate.endTime || row.endTime || ''
@@ -713,7 +725,7 @@ async function submit() {
       ref,
       code: row.code.trim(),
       name: row.courseName.trim(),
-      instructor: (row.teacher || '').trim() || null,
+      instructor: (row.instructor || row.teacher || '').trim().slice(0, 64) || null,
       semester: null,
       color: null,
     })
@@ -735,12 +747,34 @@ async function submit() {
       startWeek: row.startWeek ?? null,
       endWeek: row.endWeek ?? null,
       weekPattern: row.weekPattern || 'ALL',
+      teacher: (row.teacher || '').trim() || null,
     }
   })
 
   submitting.value = true
   try {
-    const response = await scheduleApi.importBatch({ courses: newCourses, schedules })
+    const payload = { courses: newCourses, schedules }
+    if (dataSource.value && replaceWithData.value) {
+      const updates = new Map()
+      for (const row of rows) {
+        if (row.courseMode !== 'existing' || !row.existingCourseId || updates.has(row.existingCourseId)) continue
+        updates.set(row.existingCourseId, (row.instructor || row.teacher || '').trim().slice(0, 64) || null)
+      }
+      if (updates.size) {
+        const names = [...updates.keys()].map((id) => courses.value.find((c) => c.id === id)?.name).filter(Boolean)
+        const ok = window.confirm(
+          `以导入数据为准：这 ${updates.size} 门已有课程（${names.join('、')}）原来的课表会被删除，` +
+            '换成本次导入的课表，任课教师也改成数据里的老师。课程本身和关联的 DDL 保留。继续吗？',
+        )
+        if (!ok) {
+          submitting.value = false
+          return
+        }
+        payload.courseUpdates = [...updates].map(([id, instructor]) => ({ id, instructor }))
+        payload.replaceScheduleCourseIds = [...updates.keys()]
+      }
+    }
+    const response = await scheduleApi.importBatch(payload)
     result.value = response
     notices.value = response.notices || []
     const importedIds = new Set(rows.map((row) => row.id))
@@ -1001,6 +1035,7 @@ async function submit() {
               <th>结束</th>
               <th>节次</th>
               <th>地点</th>
+              <th>教师</th>
               <th>起止周</th>
               <th>周次规律</th>
               <th></th>
@@ -1076,6 +1111,7 @@ async function submit() {
                 </div>
               </td>
               <td><input v-model="candidate.location" type="text" placeholder="地点" /></td>
+              <td><input v-model="candidate.teacher" type="text" maxlength="128" placeholder="教师" style="min-width: 110px" /></td>
               <td>
                 <div class="row" style="gap: 4px">
                   <input
@@ -1158,6 +1194,14 @@ async function submit() {
         </ul>
       </div>
 
+      <label v-if="dataSource && ocrState.candidates.length" class="row small" style="gap: 6px; align-items: center; margin: 0 0 6px">
+        <input v-model="replaceWithData" type="checkbox" />
+        <span>以导入数据为准：同名的已有课程改用数据里的教师，并替换它们原来的课表</span>
+      </label>
+      <p v-if="coursesNotInData.length" class="small muted" style="margin: 0 0 6px">
+        你现有的 {{ coursesNotInData.map((c) => c.name).join('、') }} 不在这份数据里（可能是照片识别时名字认错了），
+        导入后可到 <RouterLink to="/courses/manage">编辑课程</RouterLink> 里删除。
+      </p>
       <label v-if="weekViewContext && ocrState.candidates.length" class="row small" style="gap: 6px; align-items: center; margin: 0 0 6px">
         <input v-model="weekViewConfirmed" type="checkbox" />
         <span>我已核对每条课程的起止教学周和单双周</span>

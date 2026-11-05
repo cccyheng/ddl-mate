@@ -157,6 +157,7 @@ onBeforeUnmount(() => {
               <div class="task-item__meta">
                 <span>{{ formatClock(schedule.startTime) }} – {{ formatClock(schedule.endTime) }}</span>
                 <span v-if="schedule.location">{{ schedule.location }}</span>
+                <span v-if="schedule.teacher">{{ schedule.teacher }}</span>
                 <span v-if="schedule.periodStart">第 {{ schedule.periodStart }}–{{ schedule.periodEnd }} 节</span>
                 <span>{{ schedule.weekSummary }}</span>
               </div>

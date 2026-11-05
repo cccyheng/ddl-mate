@@ -242,11 +242,12 @@ onMounted(() => {
                 class="week-block"
                 :style="blockStyle(block)"
                 :to="`/courses/${block.courseId}`"
-                :title="`${block.courseName} ${formatClock(block.startTime)}-${formatClock(block.endTime)} ${block.location || ''}`"
+                :title="`${block.courseName} ${formatClock(block.startTime)}-${formatClock(block.endTime)} ${block.location || ''} ${block.teacher || ''}`"
               >
                 <strong class="week-block__name">{{ block.courseName }}</strong>
                 <span class="week-block__meta week-block__time">{{ formatClock(block.startTime) }}–{{ formatClock(block.endTime) }}</span>
                 <span v-if="block.location" class="week-block__meta">@{{ block.location }}</span>
+                <span v-if="block.teacher" class="week-block__meta week-block__time">{{ block.teacher }}</span>
               </RouterLink>
             </div>
           </div>

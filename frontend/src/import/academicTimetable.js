@@ -353,6 +353,27 @@ export function parseAcademicTimetable(input, { periodPairs = DLMU_PERIOD_PAIRS 
       }
     }
   }
+  // 课程的任课教师：这门课所有记录里出现过的老师，按上课次数从多到少（理论课老师排在实验老师前面）
+  const weight = new Map()
+  for (const c of candidates) {
+    const weeks = c.endWeek - c.startWeek + 1
+    const count = c.weekPattern === 'ALL' ? weeks : Math.ceil(weeks / 2)
+    if (!weight.has(c.name)) weight.set(c.name, new Map())
+    for (const t of c.teacher.split('、').filter(Boolean)) {
+      weight.get(c.name).set(t, (weight.get(c.name).get(t) || 0) + count)
+    }
+  }
+  for (const c of candidates) {
+    const names = [...(weight.get(c.name) || new Map()).entries()].sort((a, b) => b[1] - a[1]).map(([t]) => t)
+    let instructor = ''
+    for (const t of names) {
+      const next = instructor ? `${instructor}、${t}` : t
+      if (next.length > 64) break
+      instructor = next
+    }
+    c.instructor = instructor
+  }
+
   candidates.sort(
     (a, b) => a.weekday - b.weekday || a.periodStart - b.periodStart || a.startWeek - b.startWeek || a.name.localeCompare(b.name, 'zh'),
   )

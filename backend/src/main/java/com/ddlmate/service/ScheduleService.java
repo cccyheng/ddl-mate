@@ -185,7 +185,7 @@ public class ScheduleService {
             String ref = hasRef ? row.courseRef().trim() : null;
             CourseScheduleRequest normalized = new CourseScheduleRequest(row.weekday(), row.startTime(),
                     row.endTime(), row.location(), row.periodStart(), row.periodEnd(), row.weekRange(),
-                    row.semesterStartDate(), row.startWeek(), row.endWeek(), row.weekPattern());
+                    row.semesterStartDate(), row.startWeek(), row.endWeek(), row.weekPattern(), row.teacher());
             WeekSettings settings = validate(normalized);
             if (ref != null) {
                 usedRefs.add(ref);
@@ -199,10 +199,42 @@ public class ScheduleService {
             prepared.add(new PreparedRow(row, normalized, settings, ref, row.courseId()));
         }
 
+        // ---------- 第 1.5 步：以导入数据为准——更新已有课程的教师、清掉要替换的旧课表 ----------
+        List<String> notices = new ArrayList<>();
+        if (request.courseUpdates() != null) {
+            for (ScheduleImportRequest.CourseUpdate update : request.courseUpdates()) {
+                if (update == null) {
+                    continue;
+                }
+                Course course = requireCourse(update.id());
+                String instructor = blankToNull(update.instructor());
+                if (!Objects.equals(course.getInstructor(), instructor)) {
+                    course.setInstructor(instructor);
+                    courseRepository.save(course);
+                    notices.add("已更新任课教师：" + course.getName() + " → " + (instructor == null ? "（空）" : instructor));
+                }
+            }
+        }
+        if (request.replaceScheduleCourseIds() != null) {
+            int removed = 0;
+            for (Long courseId : new LinkedHashSet<>(request.replaceScheduleCourseIds())) {
+                if (courseId == null) {
+                    continue;
+                }
+                requireCourse(courseId);
+                List<CourseSchedule> old = repository.findByCourseIdOrdered(courseId);
+                removed += old.size();
+                repository.deleteAll(old);
+            }
+            repository.flush();
+            if (removed > 0) {
+                notices.add("已按导入数据替换原有课表：删除旧记录 " + removed + " 条");
+            }
+        }
+
         // ---------- 第 2 步：只创建被引用的新课程 ----------
         Map<String, Course> refToCourse = new HashMap<>();
         Set<String> requestCodes = new HashSet<>();
-        List<String> notices = new ArrayList<>();
         for (ScheduleImportRequest.ImportCourse item : newCourses) {
             if (item == null) {
                 throw new InvalidRequestException("courses", "课程列表里存在空项，请检查导入内容");
@@ -372,6 +404,7 @@ public class ScheduleService {
 
     private void apply(CourseSchedule schedule, CourseScheduleRequest request, WeekSettings settings) {
         schedule.setLocation(blankToNull(request.location()));
+        schedule.setTeacher(blankToNull(request.teacher()));
         schedule.setPeriodStart(request.periodStart());
         schedule.setPeriodEnd(request.periodEnd());
         schedule.setWeekRange(blankToNull(request.weekRange()));

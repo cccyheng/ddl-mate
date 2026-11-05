@@ -58,6 +58,7 @@ public final class ApiMapper {
                 schedule.getStartTime(),
                 schedule.getEndTime(),
                 schedule.getLocation(),
+                schedule.getTeacher(),
                 schedule.getPeriodStart(),
                 schedule.getPeriodEnd(),
                 schedule.getWeekRange(),

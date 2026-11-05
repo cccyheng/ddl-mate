@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS course_schedules (
     start_time          TIME         NOT NULL,
     end_time            TIME         NOT NULL,
     location            VARCHAR(128) NULL,
+    teacher             VARCHAR(128) NULL,
     period_start        INT          NULL,
     period_end          INT          NULL,
     week_range          VARCHAR(32)  NULL,

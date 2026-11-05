@@ -384,4 +384,65 @@ class ScheduleImportIT extends BaseIntegrationTest {
                 .andExpect(jsonPath("$.createdSchedules").value(1));
         assertThat(scheduleRepository.count()).isEqualTo(2);
     }
+
+    @Test
+    @DisplayName("以导入数据为准：更新已有课程教师、替换旧课表，并保存每节课的教师（同一事务）")
+    void replaceExistingWithImportedData() throws Exception {
+        long courseId = ApiTestSupport.idOf(mvc.perform(ApiTestSupport.json(post("/api/courses"),
+                        ApiTestSupport.course("OCR01", "数据结构")))
+                .andExpect(status().isCreated()).andReturn());
+        // 旧的（照片识别来的）课表，时间与新数据冲突
+        mvc.perform(ApiTestSupport.json(post("/api/courses/{id}/schedules", courseId),
+                        ApiTestSupport.schedule(3, "08:00", "09:40", "德济楼 103")))
+                .andExpect(status().isCreated());
+
+        String body = """
+                {
+                  "courses":[],
+                  "courseUpdates":[{"id":%d,"instructor":"陈立明"}],
+                  "replaceScheduleCourseIds":[%d],
+                  "schedules":[
+                    {"courseId":%d,"weekday":3,"startTime":"08:00","endTime":"09:35","location":"德济楼-103","teacher":"陈立明"},
+                    {"courseId":%d,"weekday":5,"startTime":"10:00","endTime":"11:35","location":"扬帆楼-101","teacher":"实验老师甲、乙"}
+                  ]
+                }
+                """.formatted(courseId, courseId, courseId, courseId);
+        mvc.perform(ApiTestSupport.json(post("/api/schedules/import"), body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.createdSchedules").value(2))
+                .andExpect(jsonPath("$.schedules[1].teacher").value("实验老师甲、乙"))
+                .andExpect(jsonPath("$.notices", org.hamcrest.Matchers.hasItem(org.hamcrest.Matchers.containsString("已更新任课教师"))))
+                .andExpect(jsonPath("$.notices", org.hamcrest.Matchers.hasItem(org.hamcrest.Matchers.containsString("删除旧记录 1 条"))));
+
+        assertThat(scheduleRepository.count()).isEqualTo(2);
+        assertThat(courseRepository.findById(courseId).orElseThrow().getInstructor()).isEqualTo("陈立明");
+    }
+
+    @Test
+    @DisplayName("替换失败时整体回滚：旧课表与教师都保持不变")
+    void replaceRollsBackOnFailure() throws Exception {
+        long courseId = ApiTestSupport.idOf(mvc.perform(ApiTestSupport.json(post("/api/courses"),
+                        ApiTestSupport.course("OCR02", "大学物理")))
+                .andExpect(status().isCreated()).andReturn());
+        mvc.perform(ApiTestSupport.json(post("/api/courses/{id}/schedules", courseId),
+                        ApiTestSupport.schedule(1, "08:00", "09:40", "励志楼 204")))
+                .andExpect(status().isCreated());
+
+        String body = """
+                {
+                  "courses":[],
+                  "courseUpdates":[{"id":%d,"instructor":"李华"}],
+                  "replaceScheduleCourseIds":[%d],
+                  "schedules":[
+                    {"courseId":%d,"weekday":1,"startTime":"08:00","endTime":"09:35"},
+                    {"courseId":%d,"weekday":1,"startTime":"09:00","endTime":"10:35"}
+                  ]
+                }
+                """.formatted(courseId, courseId, courseId, courseId);
+        mvc.perform(ApiTestSupport.json(post("/api/schedules/import"), body))
+                .andExpect(status().isConflict());
+
+        assertThat(scheduleRepository.count()).isEqualTo(1);
+        assertThat(courseRepository.findById(courseId).orElseThrow().getInstructor()).isNotEqualTo("李华");
+    }
 }
