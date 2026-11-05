@@ -16,6 +16,18 @@ const routes = [
     meta: { title: '设置登录密码', public: true, bare: true },
   },
   {
+    path: '/forgot',
+    name: 'forgot',
+    component: () => import('@/views/ForgotPasswordView.vue'),
+    meta: { title: '忘记密码', public: true, bare: true },
+  },
+  {
+    path: '/account',
+    name: 'account',
+    component: () => import('@/views/AccountView.vue'),
+    meta: { title: '账号与安全' },
+  },
+  {
     path: '/register',
     name: 'register',
     component: () => import('@/views/RegisterView.vue'),
@@ -193,6 +205,7 @@ router.beforeEach(async (to) => {
       authState.username = me.username ?? ''
       authState.setupAvailable = me.setupAvailable === true
       authState.registrationEnabled = me.registrationEnabled === true
+      authState.mustChangePassword = me.mustChangePassword === true
     } catch {
       // 后端连不上时不拦截，由页面自己显示连接错误
       authState.authenticated = true
@@ -203,6 +216,10 @@ router.beforeEach(async (to) => {
     return { name: 'login', query: to.fullPath === '/' ? {} : { redirect: to.fullPath } }
   }
   if ((to.name === 'login' || to.name === 'register') && authState.enabled && authState.authenticated) return { path: '/' }
+  // 用临时密码登录的：先改密码，别的页面都不能进
+  if (authState.enabled && authState.authenticated && authState.mustChangePassword && to.name !== 'account') {
+    return { name: 'account', query: { force: '1' } }
+  }
   return true
 })
 

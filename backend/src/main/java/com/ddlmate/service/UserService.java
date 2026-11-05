@@ -46,7 +46,8 @@ public class UserService {
     public AppUser currentUser() {
         long id = ownerResolver.resolveCurrentTenantIdentifier();
         if (id > 0) {
-            return repository.findById(id).orElseGet(this::firstUser);
+            return repository.findById(id)
+                    .orElseThrow(() -> new com.ddlmate.common.ForbiddenException("账号不存在或已注销，请重新登录"));
         }
         return firstUser();
     }

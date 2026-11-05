@@ -16,15 +16,18 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.ddlmate.service.FeedbackService;
 import com.ddlmate.service.FeedbackService.FeedbackView;
+import com.ddlmate.service.PasswordResetService;
 
 /** 问题反馈：用户提交 / 看自己的；站长看全部、标记状态、回复。 */
 @RestController
 public class FeedbackController {
 
     private final FeedbackService feedbackService;
+    private final PasswordResetService passwordResetService;
 
-    public FeedbackController(FeedbackService feedbackService) {
+    public FeedbackController(FeedbackService feedbackService, PasswordResetService passwordResetService) {
         this.feedbackService = feedbackService;
+        this.passwordResetService = passwordResetService;
     }
 
     @PostMapping("/api/feedback")
@@ -43,7 +46,10 @@ public class FeedbackController {
     @GetMapping("/api/feedback/role")
     public Map<String, Object> role() {
         boolean admin = feedbackService.isAdmin();
-        return admin ? Map.of("admin", true, "unread", feedbackService.unreadCount()) : Map.of("admin", false);
+        return admin
+                ? Map.of("admin", true, "unread", feedbackService.unreadCount(), "resetPending",
+                        passwordResetService.pendingCount())
+                : Map.of("admin", false);
     }
 
     @GetMapping("/api/admin/feedback")

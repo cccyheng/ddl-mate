@@ -8,4 +8,6 @@ export const authState = reactive({
   username: '',
   setupAvailable: false,
   registrationEnabled: false,
+  /** 用临时密码登录：必须先去「账号与安全」改密码。 */
+  mustChangePassword: false,
 })

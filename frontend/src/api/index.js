@@ -17,6 +17,16 @@ export const authApi = {
   logout: () => http.post('/auth/logout'),
   setup: (token, password) => http.post('/auth/setup', { token, password }),
   register: (username, password, displayName) => http.post('/auth/register', { username, password, displayName }),
+  changePassword: (oldPassword, newPassword) => http.post('/auth/password', { oldPassword, newPassword }),
+  deleteAccount: (password, confirmUsername) => http.post('/auth/delete-account', { password, confirmUsername }),
+  resetRequest: (payload) => http.post('/auth/reset-request', payload),
+}
+
+/** 站长处理忘记密码申请。 */
+export const resetRequestApi = {
+  list: () => http.get('/admin/reset-requests'),
+  issue: (id) => http.post(`/admin/reset-requests/${id}/issue`),
+  dismiss: (id) => http.post(`/admin/reset-requests/${id}/dismiss`),
 }
 
 export const profileApi = {

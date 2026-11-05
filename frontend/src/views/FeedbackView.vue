@@ -5,7 +5,7 @@
  */
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { feedbackApi } from '@/api'
+import { feedbackApi, resetRequestApi } from '@/api'
 import AppIcon from '@/components/AppIcon.vue'
 import { feedbackState, refreshFeedbackRole } from '@/composables/feedbackState'
 
@@ -90,6 +90,59 @@ async function update(item, payload) {
   }
 }
 
+/* ---------- 站长：找回密码申请 ---------- */
+const RESET_STATUS = { PENDING: '待处理', ISSUED: '已发临时密码', DISMISSED: '已忽略' }
+const resets = ref([])
+const issued = reactive({})
+const copied = ref('')
+
+async function loadResets() {
+  adminError.value = ''
+  try {
+    resets.value = await resetRequestApi.list()
+  } catch (err) {
+    adminError.value = err.message
+  }
+}
+
+async function openResets() {
+  tab.value = 'resets'
+  await loadResets()
+}
+
+async function issue(item) {
+  if (!window.confirm(`为「${item.username}」生成临时密码？他原来的密码会立即失效。`)) return
+  adminError.value = ''
+  try {
+    const result = await resetRequestApi.issue(item.id)
+    issued[item.id] = result.tempPassword
+    await loadResets()
+    await refreshFeedbackRole()
+  } catch (err) {
+    adminError.value = err.message
+  }
+}
+
+async function dismiss(item) {
+  adminError.value = ''
+  try {
+    await resetRequestApi.dismiss(item.id)
+    await loadResets()
+    await refreshFeedbackRole()
+  } catch (err) {
+    adminError.value = err.message
+  }
+}
+
+async function copyTemp(id) {
+  try {
+    await navigator.clipboard.writeText(issued[id])
+    copied.value = id
+  } catch {
+    copied.value = ''
+  }
+}
+
 async function openAll() {
   tab.value = 'all'
   await loadAll()
@@ -98,6 +151,7 @@ async function openAll() {
 onMounted(async () => {
   await Promise.all([loadMine(), refreshFeedbackRole()])
   if (feedbackState.admin && route.query.tab === 'all') await openAll()
+  if (feedbackState.admin && route.query.tab === 'resets') await openResets()
 })
 </script>
 
@@ -120,6 +174,9 @@ onMounted(async () => {
       </button>
       <button v-if="isAdmin" type="button" class="seg__item" :class="{ 'seg__item--active': tab === 'all' }" @click="openAll">
         全部反馈<span v-if="feedbackState.unread" class="feedback-badge">{{ feedbackState.unread }}</span>
+      </button>
+      <button v-if="isAdmin" type="button" class="seg__item" :class="{ 'seg__item--active': tab === 'resets' }" @click="openResets">
+        找回密码<span v-if="feedbackState.resetPending" class="feedback-badge">{{ feedbackState.resetPending }}</span>
       </button>
     </div>
 
@@ -176,6 +233,38 @@ onMounted(async () => {
           <div v-if="item.reply" class="feedback-reply">
             <strong>站长回复</strong><span class="muted small"> {{ time(item.repliedAt) }}</span>
             <p>{{ item.reply }}</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section v-else-if="tab === 'resets' && isAdmin" class="card">
+      <p class="card__hint" style="margin-bottom: 12px">
+        用户在登录页点「忘记密码」提交的申请。请先通过对方留的联系方式确认是本人，再生成临时密码发给他。
+        临时密码 24 小时内有效、<b>只在这里显示一次</b>；对方登录后必须马上设新密码。
+      </p>
+      <p v-if="adminError" class="field__error">{{ adminError }}</p>
+      <p v-if="!resets.length" class="muted" style="margin: 0">没有找回密码申请。</p>
+      <div class="feedback-list">
+        <article v-for="item in resets" :key="item.id" class="feedback-item" :class="{ 'feedback-item--new': item.status === 'PENDING' }">
+          <div class="row row--between" style="flex-wrap: wrap; gap: 6px">
+            <span class="small">
+              <strong>{{ item.username }}</strong>
+              <span v-if="!item.accountExists" class="badge badge--danger" style="margin-left: 6px">没有这个用户名</span>
+              <span class="muted"> · {{ time(item.createdAt) }}</span>
+            </span>
+            <span class="badge" :class="item.status === 'PENDING' ? 'badge--warn' : 'badge--muted'">{{ RESET_STATUS[item.status] }}</span>
+          </div>
+          <p class="small" style="margin: 8px 0 0">联系方式：<b>{{ item.contact }}</b></p>
+          <p v-if="item.note" class="feedback-item__content small">{{ item.note }}</p>
+          <div v-if="issued[item.id]" class="temp-password">
+            <span class="small">临时密码（只显示这一次，请发给 {{ item.username }}）：</span>
+            <code class="temp-password__value">{{ issued[item.id] }}</code>
+            <button type="button" class="btn btn--sm" @click="copyTemp(item.id)">{{ copied === item.id ? '已复制' : '复制' }}</button>
+          </div>
+          <div v-if="item.status === 'PENDING'" class="row" style="gap: 8px; margin-top: 8px; flex-wrap: wrap">
+            <button type="button" class="btn btn--sm btn--primary" :disabled="!item.accountExists" @click="issue(item)">生成临时密码</button>
+            <button type="button" class="btn btn--sm btn--ghost" @click="dismiss(item)">忽略</button>
           </div>
         </article>
       </div>
@@ -266,6 +355,23 @@ onMounted(async () => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.temp-password {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--primary-tint);
+  border: 1px dashed var(--primary-line);
+}
+.temp-password__value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  user-select: all;
 }
 .feedback-badge {
   display: inline-block;

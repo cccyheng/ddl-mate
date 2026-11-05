@@ -29,7 +29,7 @@ public class SpaController {
             "/search", "/search/**",
             "/tools", "/tools/**",
             "/login", "/setup", "/register",
-            "/feedback", "/feedback/**"
+            "/feedback", "/feedback/**", "/account", "/forgot"
     })
     public String index() {
         return "forward:/index.html";

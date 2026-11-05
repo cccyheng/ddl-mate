@@ -51,6 +51,14 @@ public class AppUser {
     @Column(name = "role", length = 16)
     private String role;
 
+    /** 站长发了临时密码后为 true：登录后必须先改密码才能用别的功能。 */
+    @Column(name = "must_change_password")
+    private Boolean mustChangePassword;
+
+    /** 临时密码的过期时间；过期后不能再用它登录。 */
+    @Column(name = "temp_password_expires_at")
+    private OffsetDateTime tempPasswordExpiresAt;
+
     protected AppUser() {
     }
 
@@ -102,6 +110,22 @@ public class AppUser {
 
     public void setPasswordHash(String passwordHash) {
         this.passwordHash = passwordHash;
+    }
+
+    public boolean isMustChangePassword() {
+        return Boolean.TRUE.equals(mustChangePassword);
+    }
+
+    public void setMustChangePassword(boolean value) {
+        this.mustChangePassword = value;
+    }
+
+    public OffsetDateTime getTempPasswordExpiresAt() {
+        return tempPasswordExpiresAt;
+    }
+
+    public void setTempPasswordExpiresAt(OffsetDateTime value) {
+        this.tempPasswordExpiresAt = value;
     }
 
     public boolean isAdmin() {

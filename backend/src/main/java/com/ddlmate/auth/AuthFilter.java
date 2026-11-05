@@ -14,6 +14,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import com.ddlmate.common.ApiError;
 import com.ddlmate.common.ErrorCodes;
 import com.ddlmate.common.TimeZones;
+import com.ddlmate.repository.AppUserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jakarta.servlet.FilterChain;
@@ -36,15 +37,21 @@ import jakarta.servlet.http.HttpSession;
 public class AuthFilter extends OncePerRequestFilter {
 
     public static final String SESSION_USER = "ddlmate.auth.user";
+    /** 用临时密码登录后为 true：只允许改密码 / 退出。 */
+    public static final String MUST_CHANGE = "ddlmate.auth.mustChange";
+    private static final Set<String> ALLOWED_BEFORE_CHANGE = Set.of("/api/auth/password", "/api/auth/me",
+            "/api/auth/logout");
 
     private static final Set<String> OPEN_API = Set.of("/api/auth/login", "/api/auth/me", "/api/auth/logout",
-            "/api/auth/setup", "/api/auth/register");
+            "/api/auth/setup", "/api/auth/register", "/api/auth/reset-request");
     private static final Set<String> SAFE_METHODS = Set.of("GET", "HEAD", "OPTIONS");
 
     private final AuthService authService;
     private final ObjectMapper objectMapper;
+    private final AppUserRepository users;
 
-    public AuthFilter(AuthService authService, ObjectMapper objectMapper) {
+    public AuthFilter(AuthService authService, ObjectMapper objectMapper, AppUserRepository users) {
+        this.users = users;
         this.authService = authService;
         this.objectMapper = objectMapper;
     }
@@ -77,6 +84,16 @@ public class AuthFilter extends OncePerRequestFilter {
         if (session == null || session.getAttribute(SESSION_USER) == null
                 || !(session.getAttribute(com.ddlmate.tenant.OwnerResolver.SESSION_USER_ID) instanceof Long)) {
             reject(response, request, HttpStatus.UNAUTHORIZED, ErrorCodes.UNAUTHENTICATED, "请先登录");
+            return;
+        }
+        // 账号已注销（例如在另一台设备上）：这个会话立即作废，绝不能落到别的账号上
+        if (!users.existsById((Long) session.getAttribute(com.ddlmate.tenant.OwnerResolver.SESSION_USER_ID))) {
+            session.invalidate();
+            reject(response, request, HttpStatus.UNAUTHORIZED, ErrorCodes.UNAUTHENTICATED, "账号不存在或已注销，请重新登录");
+            return;
+        }
+        if (Boolean.TRUE.equals(session.getAttribute(MUST_CHANGE)) && !ALLOWED_BEFORE_CHANGE.contains(path)) {
+            reject(response, request, HttpStatus.FORBIDDEN, ErrorCodes.PASSWORD_CHANGE_REQUIRED, "请先设置新密码");
             return;
         }
         chain.doFilter(request, response);

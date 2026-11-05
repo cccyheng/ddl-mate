@@ -23,10 +23,11 @@ async function submit() {
   error.value = ''
   busy.value = true
   try {
-    await authApi.login(username.value.trim(), password.value)
+    const result = await authApi.login(username.value.trim(), password.value)
     password.value = ''
-    // 整页刷新：让顶栏、提醒等按已登录状态重新初始化
-    window.location.assign(router.resolve(safeRedirect()).href)
+    // 整页刷新：让顶栏、提醒等按已登录状态重新初始化；用临时密码登录的先去改密码
+    const target = result?.mustChangePassword ? { name: 'account', query: { force: '1' } } : safeRedirect()
+    window.location.assign(router.resolve(target).href)
   } catch (err) {
     error.value = err.message || '登录失败'
   } finally {
@@ -57,6 +58,7 @@ async function submit() {
       <button type="submit" class="btn btn--primary btn--block btn--lg" :disabled="busy || !username || !password">
         {{ busy ? '正在登录…' : '登录' }}
       </button>
+      <RouterLink class="small" to="/forgot" style="text-align: center">忘记密码？</RouterLink>
       <RouterLink v-if="authState.registrationEnabled" class="small" to="/register" style="text-align: center">
         还没有账号？注册
       </RouterLink>

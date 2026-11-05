@@ -165,6 +165,8 @@ onMounted(async () => {
   window.addEventListener('ddlmate:unauthenticated', onUnauthenticated)
   await router.isReady()
   if (authState.enabled && !authState.authenticated) return
+  // 用临时密码登录、还没改密码：别的接口都会被拒绝，先不加载
+  if (authState.mustChangePassword) return
   try {
     profile.value = await profileApi.get()
     startReminderScheduler()
@@ -223,7 +225,19 @@ onMounted(async () => {
         >
           <AppIcon name="inbox" :size="17" />
           <span>问题反馈</span>
-          <span v-if="feedbackState.admin && feedbackState.unread" class="sidebar__badge">{{ feedbackState.unread }}</span>
+          <span v-if="feedbackState.admin && feedbackState.unread + feedbackState.resetPending" class="sidebar__badge">
+            {{ feedbackState.unread + feedbackState.resetPending }}
+          </span>
+        </RouterLink>
+        <RouterLink
+          v-if="authState.enabled"
+          class="nav__link sidebar__feedback"
+          :class="{ 'nav__link--active': activeName === 'account' }"
+          to="/account"
+          :title="collapsed ? '账号与安全' : undefined"
+        >
+          <AppIcon name="user" :size="17" />
+          <span>账号与安全</span>
         </RouterLink>
         <RouterLink class="sidebar__foot-card" to="/about" :title="collapsed ? profileLine : undefined">
           <span class="sidebar__foot-title">
@@ -313,7 +327,7 @@ onMounted(async () => {
 
       <footer class="app-footer">
         <div class="app-footer__inner">
-          <span>DDL Mate · 本地单人版，数据只保存在这台电脑</span>
+          <span>{{ authState.enabled ? 'DDL Mate · 数据保存在本站服务器，每个账号相互隔离' : 'DDL Mate · 本地单人版，数据只保存在这台电脑' }}</span>
           <span>{{ profileLine }}</span>
         </div>
       </footer>

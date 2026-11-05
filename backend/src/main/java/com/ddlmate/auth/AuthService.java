@@ -93,10 +93,18 @@ public class AuthService {
                 setupAvailable() ? "；一次性设置密码已开放，用完请删除 DDLMATE_AUTH_SETUP_TOKEN" : "");
     }
 
-    public sealed interface Result permits Ok, Rejected, Locked {
+    public sealed interface Result permits Ok, Rejected, Locked, TempExpired {
     }
 
-    public record Ok(long userId, String username) implements Result {
+    /** mustChangePassword：用临时密码登录，必须先改密码。 */
+    public record Ok(long userId, String username, boolean mustChangePassword) implements Result {
+        public Ok(long userId, String username) {
+            this(userId, username, false);
+        }
+    }
+
+    /** 临时密码已过期。 */
+    public record TempExpired() implements Result {
     }
 
     public record Rejected() implements Result {
@@ -109,8 +117,72 @@ public class AuthService {
     public Result authenticate(String clientKey, String username, String password) {
         String name = normalize(username);
         Optional<AppUser> user = users.findByUsernameIgnoreCase(name);
-        return guarded(clientKey, () -> user.filter(u -> PasswordHasher.matches(chars(password), hashOf(u))).isPresent(),
-                () -> new Ok(user.get().getId(), user.get().getUsername()));
+        Result result = guarded(clientKey,
+                () -> user.filter(u -> PasswordHasher.matches(chars(password), hashOf(u))).isPresent(),
+                () -> new Ok(user.get().getId(), user.get().getUsername(), user.get().isMustChangePassword()));
+        if (result instanceof Ok ok && ok.mustChangePassword()) {
+            var expires = user.get().getTempPasswordExpiresAt();
+            if (expires != null && expires.isBefore(TimeZones.now())) {
+                return new TempExpired();
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 核对某个账号的当前密码（修改密码、注销账号前用），失败计入同一套锁定规则。
+     */
+    @Transactional(readOnly = true)
+    public Result verifyPassword(String clientKey, long userId, String password) {
+        Optional<AppUser> user = users.findById(userId);
+        return guarded(clientKey,
+                () -> user.filter(u -> PasswordHasher.matches(chars(password), hashOf(u))).isPresent(),
+                () -> new Ok(user.get().getId(), user.get().getUsername(), user.get().isMustChangePassword()));
+    }
+
+    /** 修改密码：调用方先用 {@link #verifyPassword} 核对旧密码。清除「必须改密码」标记。 */
+    @Transactional
+    public void changePassword(long userId, String newPassword) {
+        if (newPassword == null || newPassword.length() < MIN_PASSWORD_LENGTH) {
+            throw new InvalidRequestException("newPassword", "新密码至少 " + MIN_PASSWORD_LENGTH + " 位");
+        }
+        if (newPassword.length() > 256) {
+            throw new InvalidRequestException("newPassword", "新密码太长");
+        }
+        AppUser user = users.findById(userId).orElseThrow(() -> new InvalidRequestException("账号不存在"));
+        if (PasswordHasher.matches(newPassword.toCharArray(), hashOf(user))) {
+            throw new InvalidRequestException("newPassword", "新密码不能和原密码相同");
+        }
+        user.setPasswordHash(PasswordHasher.hash(newPassword.toCharArray()));
+        user.setMustChangePassword(false);
+        user.setTempPasswordExpiresAt(null);
+        users.save(user);
+        log.info("用户 {} 修改了密码", user.getUsername());
+    }
+
+    private static final String TEMP_ALPHABET = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    private static final java.security.SecureRandom RANDOM = new java.security.SecureRandom();
+
+    /**
+     * 站长为忘记密码的用户生成一次性临时密码（24 小时有效，登录后必须改）。
+     * 只返回一次给站长，库里只存哈希。
+     */
+    @Transactional
+    public String issueTempPassword(long userId) {
+        AppUser user = users.findById(userId).orElseThrow(() -> new InvalidRequestException("账号不存在或已注销"));
+        StringBuilder temp = new StringBuilder();
+        for (int i = 0; i < 12; i++) {
+            if (i > 0 && i % 4 == 0) {
+                temp.append('-');
+            }
+            temp.append(TEMP_ALPHABET.charAt(RANDOM.nextInt(TEMP_ALPHABET.length())));
+        }
+        user.setPasswordHash(PasswordHasher.hash(temp.toString().toCharArray()));
+        user.setMustChangePassword(true);
+        user.setTempPasswordExpiresAt(TimeZones.now().plusHours(24));
+        users.save(user);
+        log.warn("已为用户 {} 生成临时密码（24 小时内有效）", user.getUsername());
+        return temp.toString();
     }
 
     /** 存库的密码优先；站长还没在网页设置过密码时，退回环境变量里的初始哈希。 */
