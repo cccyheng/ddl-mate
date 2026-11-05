@@ -30,6 +30,8 @@ import {
 import { recognizeTimetableLayout } from '@/ocr/timetableLayout'
 import { weekViewImportGate } from '@/ocr/importScope'
 import { importBlockReason } from '@/ocr/importValidation'
+import { calibrationFromRows, loadCalibrationRows } from '@/domain/teachingWeekStore'
+import { currentTeachingWeekOn, todayInBeijing } from '@domain/teachingWeek'
 
 const router = useRouter()
 
@@ -55,6 +57,10 @@ const ocrState = reactive({
 const weekViewConfirmed = ref(false)
 
 const semesterStartDate = ref('')
+/** 来自「教学周校准」的学期起点（今天是第几周），用来自动填写并提示来源。 */
+const calibratedStart = ref(null)
+/** 周视图一键改为整学期：第 1 周到第 N 周。 */
+const semesterEndWeek = ref(16)
 const courses = ref([])
 const submitting = ref(false)
 const submitError = ref('')
@@ -119,6 +125,19 @@ onMounted(async () => {
     courses.value = await courseApi.list()
   } catch (error) {
     ocrState.error = error.message
+  }
+  // 已在「教学周校准」里设过"本周是第几周"：直接用它推出的学期第一周周一，不用再手填
+  try {
+    const calibration = calibrationFromRows(await loadCalibrationRows())
+    if (calibration) {
+      calibratedStart.value = {
+        monday: calibration.semesterStartMonday,
+        week: currentTeachingWeekOn(calibration, todayInBeijing()),
+      }
+      if (!semesterStartDate.value) semesterStartDate.value = calibration.semesterStartMonday
+    }
+  } catch {
+    /* 读不到校准就保持手填 */
   }
 })
 
@@ -502,6 +521,16 @@ function applyPatternToAll(pattern) {
   }
 }
 
+function applyWholeSemester() {
+  const end = Math.trunc(Number(semesterEndWeek.value))
+  if (!Number.isInteger(end) || end < 1 || end > 53) return
+  for (const candidate of ocrState.candidates) {
+    if (!candidate.selected) continue
+    candidate.startWeek = 1
+    candidate.endWeek = end
+  }
+}
+
 function toggleAll(selected) {
   for (const candidate of ocrState.candidates) {
     candidate.selected = selected
@@ -827,6 +856,15 @@ async function submit() {
         <p style="margin: 6px 0">截图只展示一周，不能判断整学期的重复规律。
           <template v-if="weekViewContext.week">默认仅导入第 {{ weekViewContext.week }} 周。</template>
           请填写学期第一周周一；若课程会重复，请自行修改下面的起止教学周和单双周。</p>
+        <div class="row" style="gap: 6px; align-items: center; margin-bottom: 8px; flex-wrap: wrap">
+          <span class="small">每周都上的课：</span>
+          <button class="btn btn--sm" type="button" @click="applyWholeSemester">全部设为第 1–{{ semesterEndWeek }} 周</button>
+          <label class="row small" style="gap: 4px; align-items: center">
+            学期共
+            <input v-model.number="semesterEndWeek" type="number" min="1" max="53" style="width: 64px" />
+            周
+          </label>
+        </div>
         <label class="row" style="gap: 6px; align-items: center">
           <input v-model="weekViewConfirmed" type="checkbox" />
           <span>我已核对下面每条课程实际导入的教学周范围和单双周设置</span>
@@ -844,7 +882,10 @@ async function submit() {
         <label class="field">
           <span class="field__label">学期第一周周一（填写后启用教学周与单双周过滤）</span>
           <input v-model="semesterStartDate" type="date" />
-          <span class="field__hint">必须选周一；导入教学周范围或单双周时必填，未限定周次的课表可以留空</span>
+          <span v-if="calibratedStart && semesterStartDate === calibratedStart.monday" class="field__hint">
+            已按「教学周校准」自动填写{{ calibratedStart.week ? `（今天是第 ${calibratedStart.week} 周）` : '' }}，一般不用改
+          </span>
+          <span v-else class="field__hint">必须选周一；导入教学周范围或单双周时必填，未限定周次的课表可以留空</span>
         </label>
         <div class="field">
           <span class="field__label">批量设置周次规律</span>
@@ -1011,14 +1052,14 @@ async function submit() {
       <div class="raw-text">{{ ocrState.rawText }}</div>
     </section>
 
-    <section class="card">
+    <section class="card" :class="{ 'import-dock': ocrState.candidates.length, 'import-dock--ready': canSubmit }">
       <div class="card__head">
         <div>
           <div class="card__title">
             <AppIcon name="check" :size="18" />
             ③ 确认导入（{{ selectedCandidates.length }} 条）
           </div>
-          <p class="card__hint">确认后一次性写入；全部取消勾选则不写库。</p>
+          <p class="card__hint import-dock__hint">确认后一次性写入；全部取消勾选则不写库。</p>
         </div>
         <button
           class="btn btn--primary"
@@ -1038,9 +1079,36 @@ async function submit() {
         </ul>
       </div>
 
+      <label v-if="weekViewContext && ocrState.candidates.length" class="row small" style="gap: 6px; align-items: center; margin: 0 0 6px">
+        <input v-model="weekViewConfirmed" type="checkbox" />
+        <span>我已核对每条课程的起止教学周和单双周</span>
+      </label>
       <p v-if="blockReason && !submitError && !submitting" class="small" style="margin: 0; color: var(--warn, #b45309)">
         还不能导入：{{ blockReason }}
       </p>
     </section>
   </div>
 </template>
+
+<style scoped>
+/* 导入栏固定在屏幕底部：候选表很长时也一直看得到按钮和"还差什么" */
+.import-dock {
+  position: sticky;
+  bottom: 12px;
+  z-index: 5;
+  box-shadow: var(--shadow-lg, 0 10px 30px rgba(0, 0, 0, 0.18));
+  border-color: var(--warn-line, var(--border));
+}
+.import-dock--ready {
+  border-color: var(--primary);
+}
+.import-dock .card__head {
+  margin-bottom: 8px;
+  align-items: center;
+}
+@media (max-width: 640px) {
+  .import-dock__hint {
+    display: none;
+  }
+}
+</style>
