@@ -13,8 +13,14 @@ import vue from '@vitejs/plugin-vue'
 //   类型检查仍由 mobile 的 tsc 负责。只能引用不依赖 React Native / Expo / SQLite 的模块。
 const domainDir = fileURLToPath(new URL('../mobile/src/domain', import.meta.url))
 
+// 构建时间（北京时间），显示在侧栏底部，方便确认浏览器里是不是最新版本
+const buildStamp = new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 16).replace('T', ' ')
+
 export default defineConfig({
   base: '/',
+  define: {
+    __BUILD_STAMP__: JSON.stringify(buildStamp),
+  },
   plugins: [vue()],
   resolve: {
     alias: {

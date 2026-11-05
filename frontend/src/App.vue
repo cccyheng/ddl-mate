@@ -1,4 +1,9 @@
 <script setup>
+/* global __BUILD_STAMP__ */
+function reloadPage() {
+  window.location.reload()
+}
+const buildStamp = typeof __BUILD_STAMP__ === 'string' ? __BUILD_STAMP__ : 'dev'
 import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { authApi, profileApi } from '@/api'
@@ -6,6 +11,7 @@ import { authState } from '@/utils/authState'
 import AppIcon from '@/components/AppIcon.vue'
 import ReminderToasts from '@/components/ReminderToasts.vue'
 import { startReminderScheduler } from '@/composables/reminderScheduler'
+import { startUpdateCheck, updateAvailable } from '@/composables/updateCheck'
 import { currentTeachingWeek } from '@/domain/teachingWeekStore'
 import { todayLabel } from '@/utils/datetime'
 import { readPreference, writePreference } from '@/utils/preferences'
@@ -143,6 +149,7 @@ async function logout() {
 }
 
 onMounted(async () => {
+  startUpdateCheck()
   window.addEventListener('ddlmate:teaching-week-changed', refreshTeachingWeek)
   window.addEventListener('ddlmate:unauthenticated', onUnauthenticated)
   await router.isReady()
@@ -213,6 +220,7 @@ onMounted(async () => {
           <AppIcon name="close" :size="17" />
           <span>退出登录</span>
         </button>
+        <span v-if="!collapsed" class="sidebar__version" :title="`网页版本：${buildStamp} 构建`">版本 {{ buildStamp }}</span>
       </div>
     </aside>
 
@@ -270,6 +278,10 @@ onMounted(async () => {
         </div>
       </header>
 
+      <div v-if="updateAvailable" class="update-bar" role="status">
+        <span>网页有新版本了。</span>
+        <button type="button" class="btn btn--sm btn--primary" @click="reloadPage">点此刷新</button>
+      </div>
       <main id="main" :key="route.path" class="app-main">
         <div v-if="profileError" class="alert alert--danger" style="margin-bottom: 16px">
           后端连接失败：{{ profileError }}
@@ -294,6 +306,27 @@ onMounted(async () => {
   .topbar__collapse {
     display: none;
   }
+}
+
+.update-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 8px 16px;
+  font-size: 14px;
+  background: var(--warn-soft);
+  color: var(--warn);
+  border-bottom: 1px solid var(--warn-line);
+}
+
+.sidebar__version {
+  display: block;
+  margin-top: 6px;
+  padding: 0 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+  opacity: 0.8;
 }
 
 .sidebar__logout {

@@ -5,7 +5,7 @@
  */
 import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
-import { calendarApi } from '@/api'
+import { calendarApi, courseApi } from '@/api'
 import AppIcon from '@/components/AppIcon.vue'
 import ErrorState from '@/components/ErrorState.vue'
 import LoadingState from '@/components/LoadingState.vue'
@@ -32,6 +32,8 @@ const loading = ref(true)
 const error = ref('')
 const byDate = ref(new Map()) // key -> { schedules, tasks }
 const calibration = ref(null)
+/** 课程 id → 任课教师：这节课自己没填教师时（例如照片导入的课）用课程的。 */
+const instructorById = ref(new Map())
 let requestId = 0
 
 const teachingWeek = computed(() => {
@@ -57,7 +59,11 @@ const weekStats = computed(() => ({
 const columns = computed(() =>
   days.value.map((day) => {
     const entry = byDate.value.get(day.key) || { schedules: [], tasks: [] }
-    return { ...day, isToday: day.key === todayKey, tasks: entry.tasks, blocks: layoutDay(entry.schedules, axis.value) }
+    const blocks = layoutDay(entry.schedules, axis.value).map((block) => ({
+      ...block,
+      teacherLabel: block.teacher || instructorById.value.get(block.courseId) || '',
+    }))
+    return { ...day, isToday: day.key === todayKey, tasks: entry.tasks, blocks }
   }),
 )
 
@@ -82,6 +88,15 @@ async function load() {
     if (current === requestId) error.value = err.message
   } finally {
     if (current === requestId) loading.value = false
+  }
+}
+
+async function loadInstructors() {
+  try {
+    const list = await courseApi.list()
+    instructorById.value = new Map(list.map((course) => [course.id, course.instructor || '']))
+  } catch {
+    /* 拿不到就只显示课表自带的教师 */
   }
 }
 
@@ -134,6 +149,7 @@ watch(() => [view.value, toDateKey(monday.value)], load)
 onMounted(() => {
   load()
   loadCalibration()
+  loadInstructors()
 })
 </script>
 
@@ -242,12 +258,12 @@ onMounted(() => {
                 class="week-block"
                 :style="blockStyle(block)"
                 :to="`/courses/${block.courseId}`"
-                :title="`${block.courseName} ${formatClock(block.startTime)}-${formatClock(block.endTime)} ${block.location || ''} ${block.teacher || ''}`"
+                :title="`${block.courseName} ${formatClock(block.startTime)}-${formatClock(block.endTime)} ${block.location || ''} ${block.teacherLabel}`"
               >
                 <strong class="week-block__name">{{ block.courseName }}</strong>
                 <span class="week-block__meta week-block__time">{{ formatClock(block.startTime) }}–{{ formatClock(block.endTime) }}</span>
                 <span v-if="block.location" class="week-block__meta">@{{ block.location }}</span>
-                <span v-if="block.teacher" class="week-block__meta week-block__time">{{ block.teacher }}</span>
+                <span v-if="block.teacherLabel" class="week-block__meta week-block__teacher">{{ block.teacherLabel }}</span>
               </RouterLink>
             </div>
           </div>
@@ -387,6 +403,10 @@ onMounted(() => {
 .week-block__meta {
   color: var(--text-muted, inherit);
   overflow-wrap: anywhere;
+}
+.week-block__teacher {
+  color: inherit;
+  opacity: 0.85;
 }
 
 @media (max-width: 640px) {
