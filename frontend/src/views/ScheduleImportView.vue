@@ -30,12 +30,17 @@ import {
 import { recognizeTimetableLayout } from '@/ocr/timetableLayout'
 import { weekViewImportGate } from '@/ocr/importScope'
 import { importBlockReason } from '@/ocr/importValidation'
+import { parseAcademicTimetable } from '@/import/academicTimetable'
 import { calibrationFromRows, loadCalibrationRows } from '@/domain/teachingWeekStore'
 import { currentTeachingWeekOn, todayInBeijing } from '@domain/teachingWeek'
 
 const router = useRouter()
 
 const fileInput = ref(null)
+const dataFileInput = ref(null)
+/** 候选来自教务数据文件（而不是图片识别）时的来源说明。 */
+const dataSource = ref('')
+const MAX_DATA_FILE_BYTES = 30 * 1024 * 1024
 const imageUrl = ref('')
 const imageMeta = ref(null) // { name, width, height, scaled, size }
 const ocrImage = ref(null) // 真正交给识别的 Canvas / 图片（可能是缩放后的）
@@ -152,6 +157,46 @@ function pickFile() {
   fileInput.value?.click()
 }
 
+function pickDataFile() {
+  dataFileInput.value?.click()
+}
+
+/**
+ * 导入教务数据：HAR 抓包 / 课表接口 JSON / 教务课表网页。文件只在浏览器里解析，
+ * 不上传；抓包里的 Cookie、令牌等一概不读取、不保存。
+ */
+async function onDataFileChange(event) {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+  if (!file) return
+  ocrState.error = ''
+  if (file.size > MAX_DATA_FILE_BYTES) {
+    ocrState.error = '文件太大（超过 30 MB）。请只抓课表页面那一小段再导出。'
+    return
+  }
+  let result
+  try {
+    result = parseAcademicTimetable(await file.text())
+  } catch (error) {
+    ocrState.error = `读取文件失败：${error.message}`
+    return
+  }
+  if (result.error) {
+    ocrState.error = result.error
+    return
+  }
+  runId += 1 // 作废进行中的图片识别，避免它稍后覆盖这里的结果
+  ocrState.running = false
+  ocrState.weekView = null
+  weekViewConfirmed.value = false
+  dataSource.value = `${file.name}（${result.source === 'eams' ? '教务网页课表' : '小程序课表接口'}）`
+  ocrState.layout = result.source === 'eams' ? '教务网页课表' : '小程序课表接口'
+  ocrState.rawText = result.summary
+  ocrState.warnings = result.warnings
+  ocrState.candidates = result.candidates.map(toEditable)
+  if (result.semesterStartDate) semesterStartDate.value = result.semesterStartDate
+}
+
 async function onFileChange(event) {
   const file = event.target.files?.[0]
   event.target.value = ''
@@ -197,6 +242,7 @@ async function loadSample(name) {
 }
 
 function setImage(url, name, prepared, size) {
+  dataSource.value = ''
   // 换图即作废进行中的识别任务（旧任务不得再写回状态）
   runId += 1
   terminateWorker()
@@ -419,9 +465,8 @@ function applyCandidateFields(row, candidate, keepSelection) {
   row.existingCourseId = matched ? matched.id : null
   row.code = matched
     ? matched.code
-    : row.code && !codeTaken(row.code, row)
-      ? row.code
-      : suggestCode(row.courseName || row.name)
+    : preferredCode(candidate.code, row) ||
+      (row.code && !codeTaken(row.code, row) ? row.code : suggestCode(row.courseName || row.name))
   if (candidate.teacher) row.teacher = candidate.teacher
   row.weekday = candidate.weekday ?? row.weekday ?? null
   row.startTime = candidate.startTime || row.startTime || ''
@@ -439,6 +484,20 @@ function applyCandidateFields(row, candidate, keepSelection) {
   row.rawText = candidate.rawText || row.rawText || ''
   if (!keepSelection) row.selected = true
   return row
+}
+
+/** 数据里自带的课程号：没被已有课程占用、且本批里只被同名课程使用时直接采用。 */
+function preferredCode(code, row) {
+  const target = String(code || '').trim().toLowerCase()
+  if (!target || target.length > 32) return ''
+  if (courses.value.some((course) => String(course.code || '').toLowerCase() === target)) return ''
+  const clash = ocrState.candidates.some(
+    (other) =>
+      other !== row &&
+      String(other.code || '').trim().toLowerCase() === target &&
+      normalizeName(other.courseName) !== normalizeName(row.courseName || row.name),
+  )
+  return clash ? '' : String(code).trim()
 }
 
 function normalizeName(value) {
@@ -744,8 +803,25 @@ async function submit() {
           >
             载入样例（列表）
           </button>
+          <button class="btn" type="button" :disabled="ocrState.running" @click="pickDataFile">
+            <AppIcon name="upload" :size="16" />
+            导入教务数据
+          </button>
         </div>
       </div>
+      <p class="small muted" style="margin: -4px 0 12px">
+        「导入教务数据」：选择在课表页面抓包导出的 <span class="mono">.har</span> 文件（支持学校小程序的课表接口、教务网页「我的课表」），
+        或单独保存的课表 JSON。文件只在浏览器里读取，不上传；里面的登录信息不会被读取或保存。
+      </p>
+      <p v-if="dataSource" class="small" style="margin: -6px 0 12px">已从 {{ dataSource }} 读入 {{ ocrState.candidates.length }} 条课表，请在下面核对。</p>
+
+      <input
+        ref="dataFileInput"
+        type="file"
+        accept=".har,.json,.html,.htm,application/json,text/html"
+        hidden
+        @change="onDataFileChange"
+      />
 
       <input
         ref="fileInput"
@@ -1047,8 +1123,11 @@ async function submit() {
     </section>
 
     <section v-if="ocrState.rawText" class="card">
-      <div class="card__title" style="margin-bottom: 6px">OCR 原文（识别不出来时可以对照它手工补）</div>
-      <p class="card__hint">识别布局：{{ ocrState.layout || '未知' }}。这段文字来自图片本身，可直接复制。</p>
+      <div class="card__title" style="margin-bottom: 6px">{{ dataSource ? '读入的课表数据' : 'OCR 原文（识别不出来时可以对照它手工补）' }}</div>
+      <p class="card__hint">
+        <template v-if="dataSource">来源：{{ dataSource }}。下面是合并、按周次拆段后的每一条，可直接复制。</template>
+        <template v-else>识别布局：{{ ocrState.layout || '未知' }}。这段文字来自图片本身，可直接复制。</template>
+      </p>
       <div class="raw-text">{{ ocrState.rawText }}</div>
     </section>
 
