@@ -1,0 +1,36 @@
+# =====================================================================
+# 服务器部署 profile：H2 文件库（单人使用足够），登录强制开启，H2 控制台关闭。
+# 进程只监听 127.0.0.1，由 Nginx 对外提供 HTTPS 并转发进来。
+# 启动：java -jar ddl-mate.jar --spring.profiles.active=prod（环境变量见 deploy/ddlmate.env.example）
+# =====================================================================
+spring:
+  datasource:
+    url: jdbc:h2:file:${DDLMATE_DATA_DIR:/opt/ddlmate/data}/ddlmate;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: ${DDLMATE_H2_USER:sa}
+    password: ${DDLMATE_H2_PASSWORD:}
+  jpa:
+    hibernate:
+      ddl-auto: update
+  h2:
+    console:
+      enabled: false
+
+server:
+  address: 127.0.0.1
+  # Nginx 在前面时，用它写入的 X-Forwarded-* 判断协议与来源
+  forward-headers-strategy: native
+  servlet:
+    session:
+      cookie:
+        secure: ${DDLMATE_COOKIE_SECURE:true}
+
+ddlmate:
+  auth:
+    enabled: true
+  storage:
+    upload-dir: ${DDLMATE_DATA_DIR:/opt/ddlmate/data}/uploads
+
+logging:
+  level:
+    com.ddlmate: INFO

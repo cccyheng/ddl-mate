@@ -27,7 +27,8 @@ public class SpaController {
             "/plan", "/plan/**",
             "/exams", "/exams/**",
             "/search", "/search/**",
-            "/tools", "/tools/**"
+            "/tools", "/tools/**",
+            "/login"
     })
     public String index() {
         return "forward:/index.html";

@@ -62,7 +62,7 @@ async function request(method, path, { body, params, formData, signal } = {}) {
     throw new ApiError({
       status: 0,
       code: 'NETWORK_ERROR',
-      message: '无法连接后端服务，请确认后端已在 127.0.0.1:8080 启动',
+      message: '无法连接后端服务，请检查网络或确认服务已启动',
     })
   }
 
@@ -73,6 +73,10 @@ async function request(method, path, { body, params, formData, signal } = {}) {
   const payload = isJson ? await response.json().catch(() => null) : null
 
   if (!response.ok) {
+    // 服务器版启用了登录：会话过期或未登录时通知应用跳到登录页（登录接口本身的 401 不算）
+    if (payload?.code === 'UNAUTHENTICATED' && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('ddlmate:unauthenticated'))
+    }
     if (payload) {
       throw new ApiError(payload)
     }

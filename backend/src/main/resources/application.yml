@@ -32,6 +32,16 @@ spring:
 server:
   address: ${DDLMATE_BIND_ADDRESS:127.0.0.1}
   port: ${DDLMATE_SERVER_PORT:8080}
+  servlet:
+    session:
+      # 登录会话：7 天不操作才过期；Cookie 只给本站、脚本读不到
+      timeout: ${DDLMATE_SESSION_TIMEOUT:7d}
+      cookie:
+        name: DDLMATE_SESSION
+        http-only: true
+        same-site: strict
+        # 部署在 HTTPS 后面时设为 true
+        secure: ${DDLMATE_COOKIE_SECURE:false}
   error:
     include-message: always
     include-binding-errors: always
@@ -43,8 +53,16 @@ ddlmate:
     upload-dir: ${DDLMATE_UPLOAD_DIR:./data/uploads}
     max-file-size: ${DDLMATE_MAX_FILE_SIZE:5MB}
     allowed-content-types: image/png,image/jpeg,image/webp,image/gif
+  auth:
+    # 单人登录。默认关闭（只在本机 127.0.0.1 使用）；部署到服务器必须开启，
+    # 密码只配置 PBKDF2 哈希：node scripts/hash-password.mjs 生成
+    enabled: ${DDLMATE_AUTH_ENABLED:false}
+    username: ${DDLMATE_AUTH_USERNAME:}
+    password-hash: ${DDLMATE_AUTH_PASSWORD_HASH:}
+    max-failures: 5
+    lock-seconds: 300
   user:
-    # V1 为仅绑定 localhost 的单人开发版本，这里初始化本地资料（不是登录认证）
+    # 本地资料（显示名等），与上面的登录账号是两回事
     username: ${DDLMATE_USER_NAME:local}
     display-name: ${DDLMATE_USER_DISPLAY_NAME:本机同学}
 

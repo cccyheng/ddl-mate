@@ -8,6 +8,10 @@ public final class ErrorCodes {
     public static final String RESOURCE_NOT_FOUND = "RESOURCE_NOT_FOUND";
     public static final String RESOURCE_IN_USE = "RESOURCE_IN_USE";
     public static final String SETTING_CONFLICT = "SETTING_CONFLICT";
+    public static final String UNAUTHENTICATED = "UNAUTHENTICATED";
+    public static final String LOGIN_FAILED = "LOGIN_FAILED";
+    public static final String LOGIN_LOCKED = "LOGIN_LOCKED";
+    public static final String FORBIDDEN_ORIGIN = "FORBIDDEN_ORIGIN";
     public static final String FILE_TOO_LARGE = "FILE_TOO_LARGE";
     public static final String UNSUPPORTED_MEDIA_TYPE = "UNSUPPORTED_MEDIA_TYPE";
     public static final String INTERNAL_ERROR = "INTERNAL_ERROR";

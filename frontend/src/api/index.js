@@ -10,6 +10,13 @@ export const metaApi = {
   storageLimits: () => http.get('/meta/storage-limits'),
 };
 
+/** 单人登录（只在服务器版启用；本机版 me() 恒为已登录）。 */
+export const authApi = {
+  me: () => http.get('/auth/me'),
+  login: (username, password) => http.post('/auth/login', { username, password }),
+  logout: () => http.post('/auth/logout'),
+}
+
 export const profileApi = {
   get: () => http.get('/profile'),
   update: (displayName) => http.put('/profile', { displayName }),

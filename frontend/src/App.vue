@@ -1,7 +1,8 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
-import { profileApi } from '@/api'
+import { authApi, profileApi } from '@/api'
+import { authState } from '@/utils/authState'
 import AppIcon from '@/components/AppIcon.vue'
 import ReminderToasts from '@/components/ReminderToasts.vue'
 import { startReminderScheduler } from '@/composables/reminderScheduler'
@@ -128,8 +129,24 @@ async function refreshTeachingWeek() {
   teachingWeek.value = await currentTeachingWeek().catch(() => null)
 }
 
+/* ---------- 登录（服务器版） ---------- */
+const bare = computed(() => route.meta.bare === true)
+
+function onUnauthenticated() {
+  authState.authenticated = false
+  if (route.name !== 'login') router.push({ name: 'login', query: { redirect: route.fullPath } })
+}
+
+async function logout() {
+  await authApi.logout().catch(() => {})
+  window.location.assign('/login')
+}
+
 onMounted(async () => {
   window.addEventListener('ddlmate:teaching-week-changed', refreshTeachingWeek)
+  window.addEventListener('ddlmate:unauthenticated', onUnauthenticated)
+  await router.isReady()
+  if (authState.enabled && !authState.authenticated) return
   try {
     profile.value = await profileApi.get()
     startReminderScheduler()
@@ -141,7 +158,9 @@ onMounted(async () => {
 </script>
 
 <template>
+  <RouterView v-if="bare" />
   <div
+    v-else
     class="app-shell"
     :class="{ 'app-shell--collapsed': collapsed, 'app-shell--drawer-open': drawerOpen }"
   >
@@ -184,6 +203,16 @@ onMounted(async () => {
           </span>
           <span class="sidebar__foot-meta">{{ profileLine }}</span>
         </RouterLink>
+        <button
+          v-if="authState.enabled"
+          type="button"
+          class="nav__link sidebar__logout"
+          :title="collapsed ? '退出登录' : undefined"
+          @click="logout"
+        >
+          <AppIcon name="close" :size="17" />
+          <span>退出登录</span>
+        </button>
       </div>
     </aside>
 
@@ -265,6 +294,15 @@ onMounted(async () => {
   .topbar__collapse {
     display: none;
   }
+}
+
+.sidebar__logout {
+  width: 100%;
+  margin-top: 8px;
+  border: none;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
 }
 
 .topbar__week {

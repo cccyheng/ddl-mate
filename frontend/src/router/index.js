@@ -1,6 +1,14 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { authApi } from '@/api'
+import { authState } from '@/utils/authState'
 
 const routes = [
+  {
+    path: '/login',
+    name: 'login',
+    component: () => import('@/views/LoginView.vue'),
+    meta: { title: '登录', public: true, bare: true },
+  },
   { path: '/', name: 'home', component: () => import('@/views/HomeView.vue'), meta: { title: '首页' } },
   {
     path: '/tasks',
@@ -134,6 +142,30 @@ const router = createRouter({
   history: createWebHistory(),
   routes,
   scrollBehavior: () => ({ top: 0 }),
+})
+
+/**
+ * 服务器版启用了登录时，未登录先去登录页。本机版（未启用登录）me() 恒为已登录，不受影响。
+ * 只在第一次导航时问一次后端；之后靠接口返回 401 的事件把状态改回未登录。
+ */
+router.beforeEach(async (to) => {
+  if (authState.checked === false) {
+    try {
+      const me = await authApi.me()
+      authState.enabled = me.authEnabled
+      authState.authenticated = me.authenticated
+      authState.username = me.username ?? ''
+    } catch {
+      // 后端连不上时不拦截，由页面自己显示连接错误
+      authState.authenticated = true
+    }
+    authState.checked = true
+  }
+  if (!to.meta.public && authState.enabled && !authState.authenticated) {
+    return { name: 'login', query: to.fullPath === '/' ? {} : { redirect: to.fullPath } }
+  }
+  if (to.name === 'login' && authState.authenticated) return { path: '/' }
+  return true
 })
 
 router.afterEach((to) => {
