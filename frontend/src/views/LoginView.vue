@@ -1,13 +1,15 @@
 <script setup>
 import { ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { authApi } from '@/api'
 import AppIcon from '@/components/AppIcon.vue'
+import { authState } from '@/utils/authState'
 
 const route = useRoute()
 const router = useRouter()
 const username = ref('')
 const password = ref('')
+const show = ref(false)
 const busy = ref(false)
 const error = ref('')
 
@@ -45,12 +47,19 @@ async function submit() {
       </label>
       <label class="field">
         <span class="field__label">密码</span>
-        <input v-model="password" type="password" autocomplete="current-password" required maxlength="256" />
+        <input v-model="password" :type="show ? 'text' : 'password'" autocomplete="current-password" required maxlength="256" />
+      </label>
+      <label class="checkbox-row small">
+        <input v-model="show" type="checkbox" />
+        显示密码
       </label>
       <p v-if="error" class="field__error" role="alert">{{ error }}</p>
       <button type="submit" class="btn btn--primary btn--block btn--lg" :disabled="busy || !username || !password">
         {{ busy ? '正在登录…' : '登录' }}
       </button>
+      <RouterLink v-if="authState.setupAvailable" class="small" to="/setup" style="text-align: center">
+        有一次性设置码？去设置密码
+      </RouterLink>
     </form>
   </div>
 </template>

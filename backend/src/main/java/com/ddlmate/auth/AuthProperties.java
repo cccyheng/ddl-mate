@@ -10,10 +10,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param passwordHash PBKDF2 哈希（见 {@link PasswordHasher}），绝不配置明文密码
  * @param maxFailures  连续失败多少次后暂时锁定
  * @param lockSeconds  锁定时长（秒）
+ * @param setupToken   一次性设置码：配置后可在 /setup 页面凭它设置（或重设）密码；用完立即删掉
  */
 @ConfigurationProperties(prefix = "ddlmate.auth")
 public record AuthProperties(boolean enabled, String username, String passwordHash, Integer maxFailures,
-        Integer lockSeconds) {
+        Integer lockSeconds, String setupToken) {
 
     public int maxFailuresOrDefault() {
         return maxFailures == null || maxFailures < 1 ? 5 : maxFailures;

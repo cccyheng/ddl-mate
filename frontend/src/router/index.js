@@ -9,6 +9,12 @@ const routes = [
     component: () => import('@/views/LoginView.vue'),
     meta: { title: '登录', public: true, bare: true },
   },
+  {
+    path: '/setup',
+    name: 'setup',
+    component: () => import('@/views/SetupView.vue'),
+    meta: { title: '设置登录密码', public: true, bare: true },
+  },
   { path: '/', name: 'home', component: () => import('@/views/HomeView.vue'), meta: { title: '首页' } },
   {
     path: '/tasks',
@@ -155,6 +161,7 @@ router.beforeEach(async (to) => {
       authState.enabled = me.authEnabled
       authState.authenticated = me.authenticated
       authState.username = me.username ?? ''
+      authState.setupAvailable = me.setupAvailable === true
     } catch {
       // 后端连不上时不拦截，由页面自己显示连接错误
       authState.authenticated = true

@@ -37,7 +37,8 @@ public class AuthFilter extends OncePerRequestFilter {
 
     public static final String SESSION_USER = "ddlmate.auth.user";
 
-    private static final Set<String> OPEN_API = Set.of("/api/auth/login", "/api/auth/me", "/api/auth/logout");
+    private static final Set<String> OPEN_API = Set.of("/api/auth/login", "/api/auth/me", "/api/auth/logout",
+            "/api/auth/setup");
     private static final Set<String> SAFE_METHODS = Set.of("GET", "HEAD", "OPTIONS");
 
     private final AuthService authService;

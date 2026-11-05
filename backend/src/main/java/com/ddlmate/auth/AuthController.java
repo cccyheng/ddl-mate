@@ -42,7 +42,7 @@ public class AuthController {
         HttpSession session = request.getSession(false);
         Object user = session == null ? null : session.getAttribute(AuthFilter.SESSION_USER);
         return user == null
-                ? Map.of("authEnabled", true, "authenticated", false)
+                ? Map.of("authEnabled", true, "authenticated", false, "setupAvailable", authService.setupAvailable())
                 : Map.of("authEnabled", true, "authenticated", true, "username", user);
     }
 
@@ -67,6 +67,27 @@ public class AuthController {
         HttpSession session = request.getSession(true);
         session.setAttribute(AuthFilter.SESSION_USER, authService.username());
         return ResponseEntity.ok(Map.of("authEnabled", true, "authenticated", true, "username", authService.username()));
+    }
+
+    public record SetupRequest(@NotNull @Size(max = 256) String token,
+            @NotNull @Size(min = AuthService.MIN_PASSWORD_LENGTH, max = 256, message = "密码长度需为 10–256 位") String password) {
+    }
+
+    /** 凭一次性设置码设置密码；成功后直接登录。 */
+    @PostMapping("/setup")
+    public ResponseEntity<?> setup(@Valid @RequestBody SetupRequest body, HttpServletRequest request) {
+        if (!authService.enabled() || !authService.setupAvailable()) {
+            return error(HttpStatus.NOT_FOUND, ErrorCodes.RESOURCE_NOT_FOUND, "当前没有开放设置密码", request);
+        }
+        AuthService.Result result = authService.setupPassword(clientKey(request), body.token(), body.password());
+        if (result instanceof AuthService.Locked locked) {
+            return error(HttpStatus.TOO_MANY_REQUESTS, ErrorCodes.LOGIN_LOCKED,
+                    "失败次数过多，请 " + locked.retryAfterSeconds() + " 秒后再试", request);
+        }
+        if (result instanceof AuthService.Rejected) {
+            return error(HttpStatus.FORBIDDEN, ErrorCodes.LOGIN_FAILED, "设置码不正确或已失效", request);
+        }
+        return login(new LoginRequest(authService.username(), body.password()), request);
     }
 
     @PostMapping("/logout")

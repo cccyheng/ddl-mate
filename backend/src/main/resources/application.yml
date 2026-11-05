@@ -59,6 +59,8 @@ ddlmate:
     enabled: ${DDLMATE_AUTH_ENABLED:false}
     username: ${DDLMATE_AUTH_USERNAME:}
     password-hash: ${DDLMATE_AUTH_PASSWORD_HASH:}
+    # 一次性设置码（可选）：配置后可在 /setup 页面设置密码，网页设置的密码优先；用完删除
+    setup-token: ${DDLMATE_AUTH_SETUP_TOKEN:}
     max-failures: 5
     lock-seconds: 300
   user:
