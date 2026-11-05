@@ -1,5 +1,5 @@
 /**
- * 「学校一键导入」书签（bookmarklet）。
+ * 「课程抓取 / 考试抓取」书签（bookmarklet）：一次点击同时带上本学期课表和考试安排。
  *
  * 用户在**自己的浏览器**里登录学校教务系统（EAMS）后点击书签：
  *   1. 先同步打开 DDL Mate 的导入页（必须在点击当下打开，否则会被当成弹窗拦截）；
@@ -48,6 +48,33 @@ function ddlmateSchoolImport(APP) {
     return
   }
   var base = location.origin + location.pathname.slice(0, at + 6)
+  var semesterId = ''
+  var form = {
+    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+    'X-Requested-With': 'XMLHttpRequest',
+  }
+
+  /** 本学期考试安排：先像页面一样选定学期，再取考试列表；失败不影响课表。 */
+  function fetchExams() {
+    return fetch(base + 'stdExamTable.action', {
+      method: 'POST',
+      credentials: 'include',
+      headers: form,
+      body: 'examBatch.id=&project.id=1&semester.id=' + semesterId,
+    })
+      .then(function () {
+        return fetch(base + 'stdExamTable!examTable.action?examBatch.id=&sf_request_type=ajax', { credentials: 'include' })
+      })
+      .then(function (response) {
+        return response.text()
+      })
+      .then(function (text) {
+        return text.indexOf('考试日期') >= 0 ? text : ''
+      })
+      .catch(function () {
+        return ''
+      })
+  }
 
   fetch(base + 'courseTableForStd.action', { credentials: 'include' })
     .then(function (response) {
@@ -59,14 +86,12 @@ function ddlmateSchoolImport(APP) {
       if (!semester || !ids) {
         throw new Error('在教务页面里没有找到学期或学生编号，可能登录已过期。请刷新教务页面、重新登录后再点书签。')
       }
+      semesterId = semester[1]
       var body = 'ignoreHead=1&setting.kind=std&startWeek=&semester.id=' + semester[1] + '&ids=' + ids[1]
       return fetch(base + 'courseTableForStd!courseTable.action?sf_request_type=ajax', {
         method: 'POST',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
+        headers: form,
         body: body,
       })
     })
@@ -77,8 +102,10 @@ function ddlmateSchoolImport(APP) {
       if (text.indexOf('TaskActivity') < 0) {
         throw new Error('教务系统没有返回课表：可能这个学期还没排课，或者登录已过期。')
       }
-      payload = { source: 'dlmu-eams', host: location.host, text: text }
-      flush()
+      return fetchExams().then(function (examText) {
+        payload = { source: 'dlmu-eams', host: location.host, text: text, examText: examText }
+        flush()
+      })
     })
     .catch(function (error) {
       failure = (error && error.message) || String(error)

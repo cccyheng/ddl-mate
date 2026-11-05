@@ -160,9 +160,14 @@ onMounted(load)
         <h1>考试与复习</h1>
         <p class="page-head__sub">类型为「考试」的任务都在这里；可以按主题把复习排到考前的日子，生成普通任务。</p>
       </div>
+      <div class="row">
+      <RouterLink class="btn" to="/exams/import">
+        <AppIcon name="download" :size="16" />考试抓取
+      </RouterLink>
       <RouterLink class="btn btn--primary" :to="{ path: '/tasks/new', query: { type: 'EXAM' } }">
         <AppIcon name="plus" :size="16" />新建考试
       </RouterLink>
+      </div>
     </header>
 
     <ErrorState v-if="error" :message="error" @retry="load" />

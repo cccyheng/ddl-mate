@@ -134,6 +134,12 @@ const routes = [
   },
   { path: '/exams', name: 'exams', component: () => import('@/views/ExamsView.vue'), meta: { title: '考试与复习' } },
   {
+    path: '/exams/import',
+    name: 'exam-import',
+    component: () => import('@/views/ExamImportView.vue'),
+    meta: { title: '考试抓取' },
+  },
+  {
     path: '/tools/conflicts',
     name: 'course-conflicts',
     component: () => import('@/views/CourseConflictsView.vue'),
@@ -143,7 +149,7 @@ const routes = [
     path: '/tools/school-import',
     name: 'school-import',
     component: () => import('@/views/SchoolImportView.vue'),
-    meta: { title: '学校一键导入' },
+    meta: { title: '课程抓取' },
   },
   {
     path: '/tools/teaching-week',

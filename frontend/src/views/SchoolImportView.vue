@@ -32,9 +32,9 @@ function explainClick() {
     <header class="page-head">
       <div>
         <span class="page-head__eyebrow"><AppIcon name="download" :size="15" />工具</span>
-        <h1>学校一键导入</h1>
+        <h1>课程抓取</h1>
         <p class="page-head__sub">
-          登录学校教务系统后点一下书签，课表自动送到 DDL Mate 的导入页，核对后确认即可。目前支持大连海事大学教务系统（EAMS）。
+          登录学校教务系统后点一下书签，本学期的课表和考试安排自动送到 DDL Mate，核对后确认即可。目前支持大连海事大学教务系统（EAMS）。考试的导入见 <RouterLink to="/exams/import">考试抓取</RouterLink>。
         </p>
       </div>
     </header>
@@ -47,7 +47,7 @@ function explainClick() {
       <div class="row" style="gap: 12px; align-items: center; flex-wrap: wrap">
         <a ref="link" class="btn btn--primary bookmarklet" draggable="true" @click.prevent="explainClick">
           <AppIcon name="download" :size="16" />
-          导入到 DDL Mate
+          抓取到 DDL Mate
         </a>
         <button type="button" class="btn btn--sm" @click="copyCode">拖不动？复制书签代码</button>
       </div>
@@ -58,8 +58,9 @@ function explainClick() {
       <h2 class="card__title" style="margin-bottom: 10px"><AppIcon name="list" :size="18" />第二步：每次导入</h2>
       <ol class="steps">
         <li>在同一个浏览器里登录学校教务系统（校外经统一身份认证进入），打开「我的课表」或任意教务页面。</li>
-        <li>点书签栏里的「导入到 DDL Mate」。会打开一个新标签页；如果提示要登录 DDL Mate，先登录。</li>
+        <li>点书签栏里的「抓取到 DDL Mate」。会打开一个新标签页；如果提示要登录 DDL Mate，先登录。</li>
         <li>新标签页里出现候选课表：核对课程、时间、地点、教师和起止周，点底部的「确认导入」。</li>
+        <li>同时抓到的考试会在页面上提示「去考试抓取」，点进去核对后导入（考场、座位号都会带上）。</li>
       </ol>
       <p class="small muted" style="margin: 8px 0 0">
         学期第一周周一取自 <RouterLink to="/tools/teaching-week">教学周</RouterLink> 的校准（教务网页上没有这个日期），导入前请确认已校准。

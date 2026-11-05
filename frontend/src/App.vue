@@ -51,7 +51,8 @@ const NAV_GROUPS = [
       { name: 'exams', to: '/exams', label: '考试与复习', icon: 'exam' },
       { name: 'course-conflicts', to: '/tools/conflicts', label: '课表冲突', icon: 'conflict' },
       { name: 'teaching-week', to: '/tools/teaching-week', label: '教学周', icon: 'week' },
-      { name: 'school-import', to: '/tools/school-import', label: '学校一键导入', icon: 'download' },
+      { name: 'school-import', to: '/tools/school-import', label: '课程抓取', icon: 'download' },
+      { name: 'exam-import', to: '/exams/import', label: '考试抓取', icon: 'download' },
     ],
   },
   {

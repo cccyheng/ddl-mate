@@ -31,6 +31,7 @@ import { recognizeTimetableLayout } from '@/ocr/timetableLayout'
 import { weekViewImportGate } from '@/ocr/importScope'
 import { importBlockReason } from '@/ocr/importValidation'
 import { parseAcademicTimetable } from '@/import/academicTimetable'
+import { parseAcademicExams, PENDING_EXAMS_KEY } from '@/import/academicExams'
 import { isTrustedSchoolOrigin, MAX_SCHOOL_PAYLOAD_CHARS } from '@/import/schoolBookmarklet'
 import { calibrationFromRows, loadCalibrationRows } from '@/domain/teachingWeekStore'
 import { currentTeachingWeekOn, todayInBeijing } from '@domain/teachingWeek'
@@ -157,7 +158,7 @@ onMounted(async () => {
   }
 })
 
-/* ------------------------------------------------ 学校一键导入（书签发来的课表） */
+/* ------------------------------------------------ 课程抓取（书签发来的课表和考试） */
 
 const route = useRoute()
 /** '' | 'waiting' | 'received' | 'error' | 'no-opener' | 'timeout' */
@@ -196,6 +197,7 @@ function onSchoolMessage(event) {
     /* 教务页面已关闭也没关系 */
   }
   const result = parseAcademicTimetable(text)
+  stashExams(typeof data.payload?.examText === 'string' ? data.payload.examText.slice(0, MAX_SCHOOL_PAYLOAD_CHARS) : '', '课程抓取（学校教务系统）')
   if (result.error) {
     schoolStatus.value = 'error'
     schoolMessage.value = result.error
@@ -264,20 +266,39 @@ async function onDataFileChange(event) {
     return
   }
   let result
+  let text = ''
   try {
-    result = parseAcademicTimetable(await file.text())
+    text = await file.text()
+    result = parseAcademicTimetable(text)
   } catch (error) {
     ocrState.error = `读取文件失败：${error.message}`
     return
   }
+  const examCount = stashExams(text, file.name)
   if (result.error) {
-    ocrState.error = result.error
+    // 只有考试、没有课表的抓包：直接引导去考试抓取
+    ocrState.error = examCount ? '' : result.error
     return
   }
   applyAcademicResult(result, file.name)
 }
 
-/** 把解析好的教务课表放进候选表（文件导入与学校一键导入共用）。 */
+/** 同一份数据里的考试安排：存起来交给「考试抓取」页，并在这里提示。返回场数。 */
+const pendingExams = ref(0)
+function stashExams(input, label) {
+  if (!input) return 0
+  const parsed = parseAcademicExams(input)
+  pendingExams.value = parsed.exams.length
+  if (!parsed.exams.length) return 0
+  try {
+    sessionStorage.setItem(PENDING_EXAMS_KEY, JSON.stringify({ exams: parsed.exams, label }))
+  } catch {
+    /* 存不下也没关系：考试抓取页可以直接选文件 */
+  }
+  return parsed.exams.length
+}
+
+/** 把解析好的教务课表放进候选表（文件导入与课程抓取共用）。 */
 function applyAcademicResult(result, label) {
   runId += 1 // 作废进行中的图片识别，避免它稍后覆盖这里的结果
   ocrState.running = false
@@ -891,18 +912,25 @@ async function submit() {
       </RouterLink>
     </div>
 
+    <section v-if="pendingExams" class="card card--accent" style="margin-bottom: 16px">
+      <div class="row" style="justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap">
+        <span class="small">还抓到了 <b>{{ pendingExams }}</b> 场考试安排（含考场、座位号）。</span>
+        <RouterLink class="btn btn--sm btn--primary" to="/exams/import">去考试抓取</RouterLink>
+      </div>
+    </section>
+
     <section v-if="schoolStatus" class="card" :class="{ 'card--accent': schoolStatus === 'received' }" style="margin-bottom: 16px">
       <div class="card__title" style="margin-bottom: 6px">
         <AppIcon name="download" :size="18" />
-        学校一键导入
+        课程抓取
       </div>
       <p v-if="schoolStatus === 'waiting'" class="small" style="margin: 0">正在从学校教务系统读取课表…（如果一直没有反应，回到教务页面再点一次书签）</p>
       <p v-else-if="schoolStatus === 'received'" class="small" style="margin: 0">已收到课表，下面是候选，请核对后点底部的「确认导入」。</p>
       <p v-else-if="schoolStatus === 'error'" class="field__error" style="margin: 0">{{ schoolMessage }}</p>
-      <p v-else-if="schoolStatus === 'timeout'" class="small" style="margin: 0">两分钟内没有收到课表。请回到教务系统的页面，再点一次「导入到 DDL Mate」书签。</p>
+      <p v-else-if="schoolStatus === 'timeout'" class="small" style="margin: 0">两分钟内没有收到课表。请回到教务系统的页面，再点一次「抓取到 DDL Mate」书签。</p>
       <p v-else class="small" style="margin: 0">
         这个页面要由教务系统里的书签打开才能收到课表。设置方法见
-        <RouterLink to="/tools/school-import">学校一键导入</RouterLink>。
+        <RouterLink to="/tools/school-import">课程抓取</RouterLink>。
       </p>
     </section>
 
@@ -946,7 +974,7 @@ async function submit() {
       <p class="small muted" style="margin: -4px 0 12px">
         「导入教务数据」：选择在课表页面抓包导出的 <span class="mono">.har</span> 文件（支持学校小程序的课表接口、教务网页「我的课表」），
         或单独保存的课表 JSON。文件只在浏览器里读取，不上传；里面的登录信息不会被读取或保存。
-        电脑上更省事：用 <RouterLink to="/tools/school-import">学校一键导入</RouterLink> 书签，登录教务系统后点一下就行。
+        电脑上更省事：用 <RouterLink to="/tools/school-import">课程抓取</RouterLink> 书签，登录教务系统后点一下就行，考试也会一起抓到。
       </p>
       <p v-if="dataSource" class="small" style="margin: -6px 0 12px">已从 {{ dataSource }} 读入 {{ ocrState.candidates.length }} 条课表，请在下面核对。</p>
 
