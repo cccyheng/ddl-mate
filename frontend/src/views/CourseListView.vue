@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { ApiError, courseApi, scheduleApi } from '@/api'
 import AppIcon from '@/components/AppIcon.vue'
@@ -15,6 +15,25 @@ const schedules = ref([])
 
 const courseForm = reactive({ code: '', name: '', instructor: '', semester: '', color: '#b4573a', note: '' })
 const editingCourseId = ref(null)
+const courseFormEl = ref(null)
+const scheduleFormEl = ref(null)
+/** 正在编辑的表单闪一下高亮，提示"数据已经填到这里了"。 */
+const flashForm = ref('')
+
+/** 点「编辑」后表单在列表下方很远处：滚过去、聚焦第一个输入框并高亮，否则看起来像没反应。 */
+async function revealForm(which) {
+  await nextTick()
+  const el = which === 'course' ? courseFormEl.value : scheduleFormEl.value
+  if (!el) return
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  el.querySelector('input, select, textarea')?.focus({ preventScroll: true })
+  flashForm.value = ''
+  await nextTick()
+  flashForm.value = which
+  window.setTimeout(() => {
+    if (flashForm.value === which) flashForm.value = ''
+  }, 1600)
+}
 const courseBusy = ref(false)
 const courseErrors = ref({})
 
@@ -89,6 +108,7 @@ function startEditCourse(course) {
     color: course.color || '#b4573a',
     note: course.note || '',
   })
+  revealForm('course')
 }
 
 async function saveCourse() {
@@ -168,6 +188,7 @@ function startEditSchedule(schedule) {
     endWeek: schedule.endWeek ?? '',
     weekPattern: schedule.weekPattern || 'ALL',
   })
+  revealForm('schedule')
 }
 
 async function saveSchedule() {
@@ -302,7 +323,8 @@ onMounted(load)
 
         <hr class="divider" />
 
-        <h3 style="margin-bottom: 12px">{{ editingCourseId ? '编辑课程' : '新增课程' }}</h3>
+        <div ref="courseFormEl" class="edit-form" :class="{ 'edit-form--active': editingCourseId, 'edit-form--flash': flashForm === 'course' }">
+        <h3 style="margin-bottom: 12px">{{ editingCourseId ? `编辑课程：${courseForm.name || courseForm.code}` : '新增课程' }}</h3>
         <div class="form-grid">
           <label class="field" :class="{ 'field--invalid': courseErrors.code }">
             <span class="field__label">课程代码<span class="field__required">*</span></span>
@@ -338,6 +360,7 @@ onMounted(load)
           <button v-if="editingCourseId" class="btn btn--ghost" type="button" @click="resetCourseForm">
             取消编辑
           </button>
+        </div>
         </div>
       </section>
 
@@ -388,7 +411,8 @@ onMounted(load)
 
         <hr class="divider" />
 
-        <h3 style="margin-bottom: 12px">{{ editingScheduleId ? '编辑课表' : '新增课表' }}</h3>
+        <div ref="scheduleFormEl" class="edit-form" :class="{ 'edit-form--active': editingScheduleId, 'edit-form--flash': flashForm === 'schedule' }">
+        <h3 style="margin-bottom: 12px">{{ editingScheduleId ? `编辑课表：${courseById.get(scheduleForm.courseId)?.name || ''}` : '新增课表' }}</h3>
         <div class="form-grid">
           <label class="field" :class="{ 'field--invalid': scheduleErrors.courseId }">
             <span class="field__label">课程<span class="field__required">*</span></span>
@@ -464,7 +488,25 @@ onMounted(load)
           </button>
           <span v-if="!courses.length" class="small muted">请先新增课程</span>
         </div>
+        </div>
       </section>
     </template>
   </div>
 </template>
+
+<style scoped>
+.edit-form {
+  scroll-margin-top: 90px;
+  border-radius: var(--radius-lg, 14px);
+  transition: background-color 0.4s ease, box-shadow 0.4s ease;
+}
+.edit-form--active {
+  padding: 14px;
+  margin: 0 -14px;
+  background: color-mix(in srgb, var(--primary) 7%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 35%, transparent);
+}
+.edit-form--flash {
+  box-shadow: inset 0 0 0 2px var(--primary), 0 0 0 4px color-mix(in srgb, var(--primary) 25%, transparent);
+}
+</style>
