@@ -12,4 +12,8 @@ public interface AttachmentRepository extends JpaRepository<Attachment, Long> {
 
     @Query("select a from Attachment a join fetch a.taskSource s left join fetch s.task t where a.id = :id")
     Optional<Attachment> findByIdWithSource(@Param("id") Long id);
+
+    /** 当前用户已占用的图片字节数（按用户自动过滤）。 */
+    @Query("select coalesce(sum(a.sizeBytes), 0) from Attachment a")
+    long totalSizeBytes();
 }

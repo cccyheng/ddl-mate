@@ -1,5 +1,6 @@
 package com.ddlmate.auth;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.springframework.http.HttpStatus;
@@ -12,6 +13,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.ddlmate.common.ApiError;
 import com.ddlmate.common.ErrorCodes;
+import com.ddlmate.domain.AppUser;
+import com.ddlmate.tenant.OwnerResolver;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
@@ -19,7 +22,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-/** 单人登录：登录 / 退出 / 当前状态。 */
+/** 账号：登录 / 注册 / 退出 / 当前状态 / 站长一次性设置密码。 */
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
@@ -33,17 +36,34 @@ public class AuthController {
     public record LoginRequest(@NotNull @Size(max = 64) String username, @NotNull @Size(max = 256) String password) {
     }
 
-    /** 前端据此决定是否显示登录页；未启用登录时 authenticated 恒为 true。 */
+    public record RegisterRequest(@NotNull @Size(max = 64) String username,
+            @NotNull @Size(min = AuthService.MIN_PASSWORD_LENGTH, max = 256, message = "密码长度需为 10–256 位") String password,
+            @Size(max = 64, message = "昵称最长 64 个字符") String displayName) {
+    }
+
+    public record SetupRequest(@NotNull @Size(max = 256) String token,
+            @NotNull @Size(min = AuthService.MIN_PASSWORD_LENGTH, max = 256, message = "密码长度需为 10–256 位") String password) {
+    }
+
+    /** 前端据此决定显示登录页 / 注册入口；未启用登录时 authenticated 恒为 true。 */
     @GetMapping("/me")
     public Map<String, Object> me(HttpServletRequest request) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("authEnabled", authService.enabled());
         if (!authService.enabled()) {
-            return Map.of("authEnabled", false, "authenticated", true);
+            body.put("authenticated", true);
+            return body;
         }
         HttpSession session = request.getSession(false);
         Object user = session == null ? null : session.getAttribute(AuthFilter.SESSION_USER);
-        return user == null
-                ? Map.of("authEnabled", true, "authenticated", false, "setupAvailable", authService.setupAvailable())
-                : Map.of("authEnabled", true, "authenticated", true, "username", user);
+        body.put("authenticated", user != null);
+        if (user != null) {
+            body.put("username", user);
+        } else {
+            body.put("registrationEnabled", authService.registrationEnabled());
+            body.put("setupAvailable", authService.setupAvailable());
+        }
+        return body;
     }
 
     @PostMapping("/login")
@@ -56,24 +76,27 @@ public class AuthController {
             return error(HttpStatus.TOO_MANY_REQUESTS, ErrorCodes.LOGIN_LOCKED,
                     "失败次数过多，请 " + locked.retryAfterSeconds() + " 秒后再试", request);
         }
-        if (result instanceof AuthService.Rejected) {
-            return error(HttpStatus.UNAUTHORIZED, ErrorCodes.LOGIN_FAILED, "用户名或密码不正确", request);
+        if (result instanceof AuthService.Ok ok) {
+            return startSession(request, ok.userId(), ok.username());
         }
-        // 登录成功换一个新会话，防止会话固定攻击
-        HttpSession old = request.getSession(false);
-        if (old != null) {
-            old.invalidate();
-        }
-        HttpSession session = request.getSession(true);
-        session.setAttribute(AuthFilter.SESSION_USER, authService.username());
-        return ResponseEntity.ok(Map.of("authEnabled", true, "authenticated", true, "username", authService.username()));
+        return error(HttpStatus.UNAUTHORIZED, ErrorCodes.LOGIN_FAILED, "用户名或密码不正确", request);
     }
 
-    public record SetupRequest(@NotNull @Size(max = 256) String token,
-            @NotNull @Size(min = AuthService.MIN_PASSWORD_LENGTH, max = 256, message = "密码长度需为 10–256 位") String password) {
+    /** 注册成功后直接登录。 */
+    @PostMapping("/register")
+    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest body, HttpServletRequest request) {
+        if (!authService.registrationEnabled()) {
+            return error(HttpStatus.NOT_FOUND, ErrorCodes.RESOURCE_NOT_FOUND, "暂未开放注册", request);
+        }
+        try {
+            AppUser user = authService.register(clientKey(request), body.username(), body.password(), body.displayName());
+            return startSession(request, user.getId(), user.getUsername());
+        } catch (AuthService.RegistrationLimitException ex) {
+            return error(HttpStatus.TOO_MANY_REQUESTS, ErrorCodes.REGISTRATION_LIMITED, ex.getMessage(), request);
+        }
     }
 
-    /** 凭一次性设置码设置密码；成功后直接登录。 */
+    /** 站长凭一次性设置码设置密码；成功后直接登录。 */
     @PostMapping("/setup")
     public ResponseEntity<?> setup(@Valid @RequestBody SetupRequest body, HttpServletRequest request) {
         if (!authService.enabled() || !authService.setupAvailable()) {
@@ -84,10 +107,10 @@ public class AuthController {
             return error(HttpStatus.TOO_MANY_REQUESTS, ErrorCodes.LOGIN_LOCKED,
                     "失败次数过多，请 " + locked.retryAfterSeconds() + " 秒后再试", request);
         }
-        if (result instanceof AuthService.Rejected) {
-            return error(HttpStatus.FORBIDDEN, ErrorCodes.LOGIN_FAILED, "设置码不正确或已失效", request);
+        if (result instanceof AuthService.Ok ok) {
+            return startSession(request, ok.userId(), ok.username());
         }
-        return login(new LoginRequest(authService.username(), body.password()), request);
+        return error(HttpStatus.FORBIDDEN, ErrorCodes.LOGIN_FAILED, "设置码不正确或已失效", request);
     }
 
     @PostMapping("/logout")
@@ -97,6 +120,18 @@ public class AuthController {
             session.invalidate();
         }
         return ResponseEntity.noContent().build();
+    }
+
+    /** 换一个新会话再写入用户（防会话固定攻击）。 */
+    private static ResponseEntity<?> startSession(HttpServletRequest request, long userId, String username) {
+        HttpSession old = request.getSession(false);
+        if (old != null) {
+            old.invalidate();
+        }
+        HttpSession session = request.getSession(true);
+        session.setAttribute(AuthFilter.SESSION_USER, username);
+        session.setAttribute(OwnerResolver.SESSION_USER_ID, userId);
+        return ResponseEntity.ok(Map.of("authEnabled", true, "authenticated", true, "username", username));
     }
 
     /** 服务器在 Nginx 之后：Nginx 会写入 X-Real-IP；直连时用对端地址。 */

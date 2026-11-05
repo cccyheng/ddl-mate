@@ -27,7 +27,7 @@ import com.ddlmate.domain.TaskStatus;
 import com.ddlmate.domain.TaskType;
 import com.ddlmate.repository.CourseRepository;
 import com.ddlmate.repository.TaskRepository;
-import com.ddlmate.repository.AppSettingRepository;
+import com.ddlmate.repository.UserSettingRepository;
 import com.ddlmate.repository.TaskSourceRepository;
 import com.ddlmate.web.dto.CalendarMonthResponse;
 import com.ddlmate.web.dto.PageResponse;
@@ -52,11 +52,14 @@ public class TaskService {
 
     private final QuerySupport querySupport;
 
-    private final AppSettingRepository settingRepository;
+    private final UserSettingRepository settingRepository;
+
+    private final QuotaService quotaService;
 
     public TaskService(TaskRepository taskRepository, CourseRepository courseRepository,
             TaskSourceRepository sourceRepository, StorageService storageService, QuerySupport querySupport,
-            AppSettingRepository settingRepository) {
+            UserSettingRepository settingRepository, QuotaService quotaService) {
+        this.quotaService = quotaService;
         this.taskRepository = taskRepository;
         this.courseRepository = courseRepository;
         this.sourceRepository = sourceRepository;
@@ -253,6 +256,7 @@ public class TaskService {
 
     @Transactional
     public TaskResponse create(TaskRequest request) {
+        quotaService.checkNewTasks(1);
         Task task = new Task(request.title().trim());
         applyFull(task, request);
         if (request.status() != null && !request.status().isBlank()) {
@@ -359,7 +363,7 @@ public class TaskService {
         taskRepository.delete(task);
         taskRepository.flush();
         // 按任务存放的步骤 / 提醒随任务一起删除，避免日后同 id 任务读到旧数据
-        settingRepository.deleteAllById(List.of("task_steps." + id, "task_reminder." + id));
+        settingRepository.deleteByKeyIn(List.of("task_steps." + id, "task_reminder." + id));
 
         registerAfterCommitFileDeletion(paths);
     }

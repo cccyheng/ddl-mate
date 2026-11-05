@@ -3,6 +3,7 @@ package com.ddlmate.domain;
 import java.time.OffsetDateTime;
 
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.TenantId;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -28,6 +29,11 @@ public class Attachment {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    /** 数据归属的用户（app_users.id）。由 Hibernate 按当前登录用户自动写入并在所有查询里过滤。 */
+    @TenantId
+    @Column(name = "owner_id", updatable = false)
+    private Long ownerId;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "task_source_id", nullable = false, foreignKey = @ForeignKey(name = "fk_attachment_source"))
@@ -100,5 +106,9 @@ public class Attachment {
 
     public OffsetDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    public Long getOwnerId() {
+        return ownerId;
     }
 }

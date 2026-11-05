@@ -57,6 +57,9 @@ async function submit() {
       <button type="submit" class="btn btn--primary btn--block btn--lg" :disabled="busy || !username || !password">
         {{ busy ? '正在登录…' : '登录' }}
       </button>
+      <RouterLink v-if="authState.registrationEnabled" class="small" to="/register" style="text-align: center">
+        还没有账号？注册
+      </RouterLink>
       <RouterLink v-if="authState.setupAvailable" class="small" to="/setup" style="text-align: center">
         有一次性设置码？去设置密码
       </RouterLink>

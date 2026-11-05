@@ -7,6 +7,8 @@ import java.time.ZoneId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -17,7 +19,9 @@ import com.ddlmate.domain.CourseSchedule;
 import com.ddlmate.domain.Task;
 import com.ddlmate.domain.TaskSource;
 import com.ddlmate.domain.TaskType;
-import com.ddlmate.repository.AppSettingRepository;
+import com.ddlmate.repository.UserSettingRepository;
+import com.ddlmate.tenant.OwnerContext;
+import com.ddlmate.tenant.OwnerResolver;
 import com.ddlmate.repository.CourseRepository;
 import com.ddlmate.repository.CourseScheduleRepository;
 import com.ddlmate.repository.TaskRepository;
@@ -35,13 +39,16 @@ public class DevDataSeeder {
 
     private static final Logger log = LoggerFactory.getLogger(DevDataSeeder.class);
 
+    /** 在 {@link StartupMigration} 之后执行；示例数据写在本机唯一用户名下。 */
     @Bean
+    @Order(Ordered.LOWEST_PRECEDENCE)
     ApplicationRunner seedDevData(CourseRepository courseRepository, CourseScheduleRepository scheduleRepository,
             TaskRepository taskRepository, TaskSourceRepository sourceRepository,
-            AppSettingRepository settingRepository) {
-        return args -> {
-            if (courseRepository.count() > 0 || taskRepository.count() > 0 || sourceRepository.count() > 0
-                    || settingRepository.count() > 0) {
+            UserSettingRepository settingRepository, OwnerResolver ownerResolver) {
+        return args -> OwnerContext.runAs(ownerResolver.localUserId(), () -> {
+            boolean hasData = OwnerContext.runAs(OwnerContext.SYSTEM, () -> courseRepository.count() > 0
+                    || taskRepository.count() > 0 || sourceRepository.count() > 0 || settingRepository.count() > 0);
+            if (hasData) {
                 log.info("库里已有数据，跳过 dev 示例数据初始化");
                 return;
             }
@@ -96,7 +103,7 @@ public class DevDataSeeder {
             sourceRepository.save(source);
 
             log.info("dev 示例数据初始化完成：3 门课程、4 条课表、3 个任务、1 条原通知（未含附件）");
-        };
+        });
     }
 
     private Course newCourse(String code, String name, String instructor, String color) {

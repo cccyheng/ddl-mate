@@ -14,12 +14,13 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
-import com.ddlmate.repository.AppSettingRepository;
+import com.ddlmate.repository.UserSettingRepository;
 import com.ddlmate.repository.AttachmentRepository;
 import com.ddlmate.repository.CourseRepository;
 import com.ddlmate.repository.CourseScheduleRepository;
 import com.ddlmate.repository.TaskRepository;
 import com.ddlmate.repository.TaskSourceRepository;
+import com.ddlmate.tenant.OwnerContext;
 
 /**
  * 集成测试基类：完整 Spring 上下文 + MockMvc + H2 内存库。
@@ -51,21 +52,29 @@ public abstract class BaseIntegrationTest {
     protected AttachmentRepository attachmentRepository;
 
     @Autowired
-    protected AppSettingRepository settingRepository;
+    protected UserSettingRepository settingRepository;
 
     @DynamicPropertySource
     static void storageProperties(DynamicPropertyRegistry registry) {
         registry.add("ddlmate.storage.upload-dir", () -> UPLOAD_DIR.toString());
     }
 
+    /** 清空所有用户的业务数据：用系统身份执行，否则只会删掉某一个用户名下的。 */
     @BeforeEach
     void cleanDatabase() {
-        attachmentRepository.deleteAll();
-        sourceRepository.deleteAll();
-        taskRepository.deleteAll();
-        scheduleRepository.deleteAll();
-        courseRepository.deleteAll();
-        settingRepository.deleteAll();
+        OwnerContext.runAs(OwnerContext.SYSTEM, () -> {
+            attachmentRepository.deleteAll();
+            sourceRepository.deleteAll();
+            taskRepository.deleteAll();
+            scheduleRepository.deleteAll();
+            courseRepository.deleteAll();
+            settingRepository.deleteAll();
+        });
+    }
+
+    /** 以系统身份统计（不受当前用户过滤），用于断言"确实没有写进库"。 */
+    protected static <T> T asSystem(java.util.function.Supplier<T> action) {
+        return OwnerContext.runAs(OwnerContext.SYSTEM, action);
     }
 
     private static Path createTempUploadDir() {

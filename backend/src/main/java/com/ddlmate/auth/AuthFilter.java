@@ -38,7 +38,7 @@ public class AuthFilter extends OncePerRequestFilter {
     public static final String SESSION_USER = "ddlmate.auth.user";
 
     private static final Set<String> OPEN_API = Set.of("/api/auth/login", "/api/auth/me", "/api/auth/logout",
-            "/api/auth/setup");
+            "/api/auth/setup", "/api/auth/register");
     private static final Set<String> SAFE_METHODS = Set.of("GET", "HEAD", "OPTIONS");
 
     private final AuthService authService;
@@ -74,7 +74,8 @@ public class AuthFilter extends OncePerRequestFilter {
             return;
         }
         HttpSession session = request.getSession(false);
-        if (session == null || session.getAttribute(SESSION_USER) == null) {
+        if (session == null || session.getAttribute(SESSION_USER) == null
+                || !(session.getAttribute(com.ddlmate.tenant.OwnerResolver.SESSION_USER_ID) instanceof Long)) {
             reject(response, request, HttpStatus.UNAUTHORIZED, ErrorCodes.UNAUTHENTICATED, "请先登录");
             return;
         }

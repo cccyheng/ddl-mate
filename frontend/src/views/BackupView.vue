@@ -10,7 +10,7 @@ const TABLE_LABELS = {
   tasks: '任务',
   task_sources: '原通知',
   attachments: '附件图片',
-  app_settings: '其他设置（专注、计划、模板…）',
+  user_settings: '其他设置（专注、计划、模板…）',
 }
 
 const exporting = ref(false)
@@ -88,7 +88,7 @@ async function restore() {
       <div>
         <span class="page-head__eyebrow"><AppIcon name="archive" :size="15" />工具</span>
         <h1>备份与恢复</h1>
-        <p class="page-head__sub">把电脑版的全部数据（含通知截图）导出成一个文件；需要时再整体恢复。电脑版备份与手机备份格式不同，不能互导。</p>
+        <p class="page-head__sub">把你自己账号的全部数据（含通知截图）导出成一个文件；需要时再整体恢复，不会影响其他账号。电脑版备份与手机备份格式不同，不能互导。</p>
       </div>
     </header>
 

@@ -15,6 +15,12 @@ const routes = [
     component: () => import('@/views/SetupView.vue'),
     meta: { title: '设置登录密码', public: true, bare: true },
   },
+  {
+    path: '/register',
+    name: 'register',
+    component: () => import('@/views/RegisterView.vue'),
+    meta: { title: '注册', public: true, bare: true },
+  },
   { path: '/', name: 'home', component: () => import('@/views/HomeView.vue'), meta: { title: '首页' } },
   {
     path: '/tasks',
@@ -162,6 +168,7 @@ router.beforeEach(async (to) => {
       authState.authenticated = me.authenticated
       authState.username = me.username ?? ''
       authState.setupAvailable = me.setupAvailable === true
+      authState.registrationEnabled = me.registrationEnabled === true
     } catch {
       // 后端连不上时不拦截，由页面自己显示连接错误
       authState.authenticated = true
@@ -171,7 +178,7 @@ router.beforeEach(async (to) => {
   if (!to.meta.public && authState.enabled && !authState.authenticated) {
     return { name: 'login', query: to.fullPath === '/' ? {} : { redirect: to.fullPath } }
   }
-  if (to.name === 'login' && authState.authenticated) return { path: '/' }
+  if ((to.name === 'login' || to.name === 'register') && authState.enabled && authState.authenticated) return { path: '/' }
   return true
 })
 

@@ -36,7 +36,11 @@ public class ScheduleService {
 
     private final CourseRepository courseRepository;
 
-    public ScheduleService(CourseScheduleRepository repository, CourseRepository courseRepository) {
+    private final QuotaService quotaService;
+
+    public ScheduleService(CourseScheduleRepository repository, CourseRepository courseRepository,
+            QuotaService quotaService) {
+        this.quotaService = quotaService;
         this.repository = repository;
         this.courseRepository = courseRepository;
     }
@@ -162,6 +166,7 @@ public class ScheduleService {
         List<ScheduleImportRequest.ImportCourse> newCourses = request.courses() == null ? List.of()
                 : request.courses();
         List<ScheduleImportRequest.ImportSchedule> rows = request.schedules();
+        quotaService.checkNewCourses(newCourses.size());
 
         // ---------- 第 1 步：逐行校验（不写库），记录哪些新课程真的被引用 ----------
         List<PreparedRow> prepared = new ArrayList<>();

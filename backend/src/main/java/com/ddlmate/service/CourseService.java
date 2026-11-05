@@ -26,8 +26,11 @@ public class CourseService {
 
     private final TaskRepository taskRepository;
 
+    private final QuotaService quotaService;
+
     public CourseService(CourseRepository courseRepository, CourseScheduleRepository scheduleRepository,
-            TaskRepository taskRepository) {
+            TaskRepository taskRepository, QuotaService quotaService) {
+        this.quotaService = quotaService;
         this.courseRepository = courseRepository;
         this.scheduleRepository = scheduleRepository;
         this.taskRepository = taskRepository;
@@ -68,6 +71,7 @@ public class CourseService {
 
     @Transactional
     public CourseResponse create(CourseRequest request) {
+        quotaService.checkNewCourses(1);
         String code = request.code().trim();
         if (courseRepository.existsByCodeIgnoreCase(code)) {
             throw new ResourceInUseException("课程代码已存在：" + code, com.ddlmate.common.ErrorCodes.RESOURCE_IN_USE);

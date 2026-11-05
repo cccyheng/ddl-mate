@@ -15,7 +15,7 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
-import com.ddlmate.auth.AuthCredentialRepository;
+import com.ddlmate.repository.AppUserRepository;
 
 /** 一次性设置码：错误计数、成功后直接登录、不能重复使用、备份里不带密码哈希。 */
 class AuthSetupIT extends BaseIntegrationTest {
@@ -23,10 +23,13 @@ class AuthSetupIT extends BaseIntegrationTest {
     private static final String TOKEN = "setup-token-0123456789-abcdef";
 
     @Autowired
-    AuthCredentialRepository credentialRepository;
+    AppUserRepository userRepository;
 
     @DynamicPropertySource
     static void authProperties(DynamicPropertyRegistry registry) {
+        // 独立的内存库：启用登录时的启动迁移会改名用户，不能影响其他测试类
+        registry.add("spring.datasource.url",
+                () -> "jdbc:h2:mem:authsetupit;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1");
         registry.add("ddlmate.auth.enabled", () -> "true");
         registry.add("ddlmate.auth.username", () -> "siteadmin");
         registry.add("ddlmate.auth.password-hash", () -> "");
@@ -49,7 +52,9 @@ class AuthSetupIT extends BaseIntegrationTest {
     @Test
     @DisplayName("设置码：错误被拒并计入锁定；正确则设置密码并直接登录；之后不能再用；新密码可登录")
     void setupFlow() throws Exception {
-        credentialRepository.deleteAll();
+        var admin = userRepository.findByUsernameIgnoreCase("siteadmin").orElseThrow();
+        admin.setPasswordHash(null);
+        userRepository.save(admin);
         mvc.perform(get("/api/auth/me")).andExpect(jsonPath("$.setupAvailable").value(true));
 
         mvc.perform(ApiTestSupport.json(sameSite(post("/api/auth/setup"), "10.1.0.1"), setup("wrong", "a-new-password-1")))
@@ -64,7 +69,7 @@ class AuthSetupIT extends BaseIntegrationTest {
                 .andReturn();
         MockHttpSession session = (MockHttpSession) done.getRequest().getSession(false);
         mvc.perform(get("/api/tasks").session(session)).andExpect(status().isOk());
-        assertThat(credentialRepository.count()).isEqualTo(1);
+        assertThat(userRepository.findByUsernameIgnoreCase("siteadmin").orElseThrow().getPasswordHash()).startsWith("pbkdf2$");
 
         // 设置码已作废
         mvc.perform(ApiTestSupport.json(sameSite(post("/api/auth/setup"), "10.1.0.3"), setup(TOKEN, "another-password-2")))
@@ -78,6 +83,6 @@ class AuthSetupIT extends BaseIntegrationTest {
         MockHttpSession again = (MockHttpSession) login.getRequest().getSession(false);
         String backup = ApiTestSupport.utf8(mvc.perform(get("/api/backup/export").session(again))
                 .andExpect(status().isOk()).andReturn());
-        assertThat(backup).doesNotContain("pbkdf2$").doesNotContain("auth_credentials");
+        assertThat(backup).doesNotContain("pbkdf2$").doesNotContain("password_hash");
     }
 }

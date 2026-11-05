@@ -10,8 +10,8 @@ import org.springframework.transaction.annotation.Transactional;
 import com.ddlmate.common.ErrorCodes;
 import com.ddlmate.common.InvalidRequestException;
 import com.ddlmate.common.ResourceInUseException;
-import com.ddlmate.domain.AppSetting;
-import com.ddlmate.repository.AppSettingRepository;
+import com.ddlmate.domain.UserSetting;
+import com.ddlmate.repository.UserSettingRepository;
 import com.ddlmate.web.dto.SettingResponse;
 
 /**
@@ -44,9 +44,9 @@ public class SettingsService {
     private static final Pattern PER_TASK = Pattern.compile("^(task_steps|task_reminder)\\.[1-9][0-9]{0,18}$");
     private static final Set<String> PREFIXES = Set.of("task_steps.", "task_reminder.");
 
-    private final AppSettingRepository repository;
+    private final UserSettingRepository repository;
 
-    public SettingsService(AppSettingRepository repository) {
+    public SettingsService(UserSettingRepository repository) {
         this.repository = repository;
     }
 
@@ -57,7 +57,7 @@ public class SettingsService {
     @Transactional(readOnly = true)
     public SettingResponse get(String key) {
         requireKey(key);
-        return repository.findById(key)
+        return repository.findByKey(key)
                 .map(SettingsService::toResponse)
                 .orElseGet(() -> new SettingResponse(key, null, 0, null));
     }
@@ -79,14 +79,14 @@ public class SettingsService {
         if (value.length() > MAX_VALUE_LENGTH) {
             throw new InvalidRequestException("value", "取值过大（上限 " + MAX_VALUE_LENGTH + " 字符）");
         }
-        AppSetting setting = repository.findById(key).orElse(null);
+        UserSetting setting = repository.findByKey(key).orElse(null);
         long current = setting == null ? 0 : setting.getRevision();
         if (current != expectedRevision) {
             throw new ResourceInUseException(
                     "这项设置已在别处被修改（当前版本 " + current + "），请刷新后再保存", ErrorCodes.SETTING_CONFLICT);
         }
         if (setting == null) {
-            setting = new AppSetting(key);
+            setting = new UserSetting(key);
         }
         setting.setValue(value);
         setting.setRevision(current + 1);
@@ -96,7 +96,7 @@ public class SettingsService {
     @Transactional
     public void delete(String key) {
         requireKey(key);
-        repository.deleteById(key);
+        repository.deleteByKey(key);
     }
 
     private static void requireKey(String key) {
@@ -105,7 +105,7 @@ public class SettingsService {
         }
     }
 
-    private static SettingResponse toResponse(AppSetting setting) {
+    private static SettingResponse toResponse(UserSetting setting) {
         return new SettingResponse(setting.getKey(), setting.getValue(), setting.getRevision(), setting.getUpdatedAt());
     }
 }

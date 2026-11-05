@@ -16,6 +16,7 @@ export const authApi = {
   login: (username, password) => http.post('/auth/login', { username, password }),
   logout: () => http.post('/auth/logout'),
   setup: (token, password) => http.post('/auth/setup', { token, password }),
+  register: (username, password, displayName) => http.post('/auth/register', { username, password, displayName }),
 }
 
 export const profileApi = {

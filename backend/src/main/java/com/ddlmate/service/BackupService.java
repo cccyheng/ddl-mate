@@ -25,6 +25,7 @@ import java.util.Set;
 import javax.sql.DataSource;
 
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.ResultSetExtractor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -32,6 +33,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import com.ddlmate.common.InvalidRequestException;
 import com.ddlmate.common.TimeZones;
+import com.ddlmate.tenant.OwnerResolver;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
@@ -40,7 +42,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * <p>导出：课程、课表、任务、原通知、附件（含图片字节）与键值设置，逐表逐列原样导出。
  * 时间列导出为不带时区的「库内原值」字符串，恢复时原样写回，与运行机器的时区无关。</p>
  *
- * <p>恢复：整体替换，<strong>保留原 id</strong>。设置里的 JSON（今日计划、复习安排、
+ * <p>按用户：只导出 / 恢复当前登录用户自己的数据（owner_id 不写进备份文件，恢复时写成当前用户）。</p>
+ *
+ * <p>恢复：整体替换自己的数据，<strong>保留原 id</strong>。设置里的 JSON（今日计划、复习安排、
  * 重复任务账本、{@code task_steps.<id>} 等）引用的都是任务 / 课程 id，保留 id 后无需改写，
  * 也就不会出现引用错位。恢复前先把当前数据完整导出到 {@code backups/} 目录作为安全副本。</p>
  */
@@ -48,11 +52,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class BackupService {
 
     public static final String FORMAT = "ddlmate.web-backup";
-    public static final int VERSION = 1;
+    public static final int VERSION = 2;
 
     /** 恢复写入顺序（删除时倒序），保证外键先有父后有子。 */
     static final List<String> TABLES = List.of("courses", "course_schedules", "tasks", "task_sources", "attachments",
-            "app_settings");
+            "user_settings");
+
+    /** 有全站唯一 id、恢复时保留原 id 的表（设置行没有被引用，恢复时重新分配 id）。 */
+    static final List<String> ID_TABLES = List.of("courses", "course_schedules", "tasks", "task_sources", "attachments");
 
     private static final DateTimeFormatter STAMP = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
 
@@ -60,9 +67,11 @@ public class BackupService {
     private final DataSource dataSource;
     private final StorageService storageService;
     private final ObjectMapper objectMapper;
+    private final OwnerResolver ownerResolver;
 
     public BackupService(JdbcTemplate jdbc, DataSource dataSource, StorageService storageService,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper, OwnerResolver ownerResolver) {
+        this.ownerResolver = ownerResolver;
         this.jdbc = jdbc;
         this.dataSource = dataSource;
         this.storageService = storageService;
@@ -73,10 +82,11 @@ public class BackupService {
 
     @Transactional(readOnly = true)
     public Map<String, Object> export() {
+        long owner = currentOwner();
         Map<String, Object> tables = new LinkedHashMap<>();
         Map<String, Integer> counts = new LinkedHashMap<>();
         for (String table : TABLES) {
-            List<Map<String, Object>> rows = readTable(table);
+            List<Map<String, Object>> rows = readTable(table, owner);
             tables.put(table, rows);
             counts.put(table, rows.size());
         }
@@ -104,19 +114,26 @@ public class BackupService {
         return backup;
     }
 
-    private List<Map<String, Object>> readTable(String table) {
-        return jdbc.query("SELECT * FROM " + table + " ORDER BY 1", (ResultSet rs) -> {
+    /** 只读当前用户的行；owner_id 不导出，设置行的 id 也不导出（恢复时重新分配）。 */
+    private List<Map<String, Object>> readTable(String table, long owner) {
+        boolean dropId = !ID_TABLES.contains(table);
+        ResultSetExtractor<List<Map<String, Object>>> extractor = (ResultSet rs) -> {
             List<Map<String, Object>> rows = new ArrayList<>();
             ResultSetMetaData meta = rs.getMetaData();
             while (rs.next()) {
                 Map<String, Object> row = new LinkedHashMap<>();
                 for (int i = 1; i <= meta.getColumnCount(); i++) {
-                    row.put(meta.getColumnLabel(i).toLowerCase(Locale.ROOT), readValue(rs, i, meta.getColumnType(i)));
+                    String column = meta.getColumnLabel(i).toLowerCase(Locale.ROOT);
+                    if ("owner_id".equals(column) || (dropId && "id".equals(column))) {
+                        continue;
+                    }
+                    row.put(column, readValue(rs, i, meta.getColumnType(i)));
                 }
                 rows.add(row);
             }
             return rows;
-        });
+        };
+        return jdbc.query("SELECT * FROM " + table + " WHERE owner_id = ? ORDER BY id", extractor, owner);
     }
 
     private static Object readValue(ResultSet rs, int index, int sqlType) throws SQLException {
@@ -145,9 +162,10 @@ public class BackupService {
         result.put("exportedAt", backup.get("exportedAt"));
         result.put("counts", counts);
         result.put("fileCount", filesOf(backup).size());
+        long owner = currentOwner();
         Map<String, Integer> current = new LinkedHashMap<>();
         for (String table : TABLES) {
-            current.put(table, jdbc.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class));
+            current.put(table, jdbc.queryForObject("SELECT COUNT(*) FROM " + table + " WHERE owner_id = ?", Integer.class, owner));
         }
         result.put("currentCounts", current);
         return result;
@@ -158,15 +176,17 @@ public class BackupService {
         if (backup == null || !FORMAT.equals(backup.get("format"))) {
             throw new InvalidRequestException("format", "这不是 DDL Mate 网页版备份文件。");
         }
-        if (!(backup.get("version") instanceof Number number) || number.intValue() != VERSION) {
-            throw new InvalidRequestException("version", "备份文件版本不认识（只支持 v" + VERSION + "）。");
+        if (!(backup.get("version") instanceof Number number) || (number.intValue() != VERSION && number.intValue() != 1)) {
+            throw new InvalidRequestException("version", "备份文件版本不认识（支持 v1、v" + VERSION + "）。");
         }
         if (!(backup.get("tables") instanceof Map<?, ?> raw)) {
             throw new InvalidRequestException("tables", "备份文件缺少数据表。");
         }
+        // v1（单人版）：设置在 app_settings 表里，列名相同
+        boolean v1 = number.intValue() == 1;
         Map<String, List<Map<String, Object>>> tables = new LinkedHashMap<>();
         for (String table : TABLES) {
-            Object rows = raw.get(table);
+            Object rows = raw.get(v1 && "user_settings".equals(table) ? "app_settings" : table);
             if (!(rows instanceof List<?> list)) {
                 throw new InvalidRequestException("tables", "备份文件缺少数据表：" + table);
             }
@@ -192,9 +212,9 @@ public class BackupService {
                 throw new InvalidRequestException("files", "附件文件缺失：" + relative);
             }
         }
-        for (Map<String, Object> setting : tables.get("app_settings")) {
+        for (Map<String, Object> setting : tables.get("user_settings")) {
             if (!SettingsService.isAllowedKey(String.valueOf(setting.get("setting_key")))) {
-                throw new InvalidRequestException("app_settings", "备份里有不认识的设置项：" + setting.get("setting_key"));
+                throw new InvalidRequestException("user_settings", "备份里有不认识的设置项：" + setting.get("setting_key"));
             }
         }
         return tables;
@@ -240,16 +260,25 @@ public class BackupService {
     @Transactional
     public Map<String, Object> restore(Map<String, Object> backup) {
         Map<String, List<Map<String, Object>>> tables = validate(backup);
-        Path safetyCopy = writeSafetyCopy();
+        long owner = currentOwner();
+        rejectForeignIds(tables, owner);
+        Path safetyCopy = writeSafetyCopy(owner);
 
         for (int i = TABLES.size() - 1; i >= 0; i--) {
-            jdbc.update("DELETE FROM " + TABLES.get(i));
+            jdbc.update("DELETE FROM " + TABLES.get(i) + " WHERE owner_id = ?", owner);
         }
         Map<String, Integer> counts = new LinkedHashMap<>();
         for (String table : TABLES) {
             Map<String, Integer> columnTypes = columnTypes(table);
+            boolean keepId = ID_TABLES.contains(table);
             for (Map<String, Object> row : tables.get(table)) {
-                insert(table, row, columnTypes);
+                Map<String, Object> owned = new LinkedHashMap<>(row);
+                owned.remove("owner_id");
+                if (!keepId) {
+                    owned.remove("id");
+                }
+                owned.put("owner_id", owner);
+                insert(table, owned, columnTypes);
             }
             counts.put(table, tables.get(table).size());
         }
@@ -258,9 +287,7 @@ public class BackupService {
             @Override
             public void afterCommit() {
                 for (String table : TABLES) {
-                    if (!"app_settings".equals(table)) {
-                        restartIdentity(table);
-                    }
+                    restartIdentity(table);
                 }
             }
         });
@@ -283,9 +310,39 @@ public class BackupService {
         return result;
     }
 
-    private Path writeSafetyCopy() {
+    /**
+     * id 是全站共用的：备份里的 id 如果已经属于别的账号（例如拿别人的备份来恢复），按原 id 写回会冲突，直接拒绝。
+     * 自己导出、自己恢复时，这些 id 只会属于自己（或已被自己删掉），不会冲突。
+     */
+    private void rejectForeignIds(Map<String, List<Map<String, Object>>> tables, long owner) {
+        for (String table : ID_TABLES) {
+            List<Long> ids = tables.get(table).stream().map(r -> ((Number) r.get("id")).longValue()).toList();
+            for (int from = 0; from < ids.size(); from += 500) {
+                List<Long> chunk = ids.subList(from, Math.min(ids.size(), from + 500));
+                String marks = String.join(",", chunk.stream().map(x -> "?").toList());
+                List<Object> params = new ArrayList<>(chunk);
+                params.add(owner);
+                Integer clash = jdbc.queryForObject("SELECT COUNT(*) FROM " + table + " WHERE id IN (" + marks
+                        + ") AND (owner_id IS NULL OR owner_id <> ?)", Integer.class, params.toArray());
+                if (clash != null && clash > 0) {
+                    throw new InvalidRequestException("tables",
+                            "这份备份里的数据编号已被本站其他账号使用（可能不是你自己导出的备份），无法恢复。");
+                }
+            }
+        }
+    }
+
+    private long currentOwner() {
+        long owner = ownerResolver.resolveCurrentTenantIdentifier();
+        if (owner <= 0) {
+            throw new IllegalStateException("没有登录用户，不能备份或恢复");
+        }
+        return owner;
+    }
+
+    private Path writeSafetyCopy(long owner) {
         Path dir = storageService.getRoot().toAbsolutePath().getParent().resolve("backups");
-        Path file = dir.resolve("pre-restore-" + TimeZones.now().format(STAMP) + ".json");
+        Path file = dir.resolve("pre-restore-u" + owner + "-" + TimeZones.now().format(STAMP) + ".json");
         try {
             Files.createDirectories(dir);
             objectMapper.writeValue(file.toFile(), export());

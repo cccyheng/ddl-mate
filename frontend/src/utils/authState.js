@@ -7,4 +7,5 @@ export const authState = reactive({
   authenticated: false,
   username: '',
   setupAvailable: false,
+  registrationEnabled: false,
 })

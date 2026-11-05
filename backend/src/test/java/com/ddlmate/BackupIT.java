@@ -105,7 +105,7 @@ class BackupIT extends BaseIntegrationTest {
                 .andExpect(jsonPath("$.message").value("课表引用了不存在的课程。"));
 
         ObjectNode badKey = (ObjectNode) MAPPER.readTree(backup);
-        ((com.fasterxml.jackson.databind.node.ArrayNode) badKey.path("tables").path("app_settings"))
+        ((com.fasterxml.jackson.databind.node.ArrayNode) badKey.path("tables").path("user_settings"))
                 .add(MAPPER.createObjectNode().put("setting_key", "photo_ocr.companion_endpoint").put("setting_value", "x"));
         mvc.perform(ApiTestSupport.json(post("/api/backup/preview"), badKey.toString()))
                 .andExpect(status().isBadRequest());

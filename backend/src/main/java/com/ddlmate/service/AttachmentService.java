@@ -34,8 +34,11 @@ public class AttachmentService {
 
     private final StorageService storageService;
 
+    private final QuotaService quotaService;
+
     public AttachmentService(AttachmentRepository attachmentRepository, TaskSourceRepository sourceRepository,
-            SourceService sourceService, StorageService storageService) {
+            SourceService sourceService, StorageService storageService, QuotaService quotaService) {
+        this.quotaService = quotaService;
         this.attachmentRepository = attachmentRepository;
         this.sourceRepository = sourceRepository;
         this.sourceService = sourceService;
@@ -59,6 +62,7 @@ public class AttachmentService {
         }
         TaskSource source = sourceRepository.findById(sourceId)
                 .orElseThrow(() -> new ResourceNotFoundException("原通知", sourceId));
+        quotaService.checkNewFiles(files);
 
         List<Attachment> written = new ArrayList<>(files.size());
         // 已落盘的文件路径：在 store() 成功那一刻就记录，

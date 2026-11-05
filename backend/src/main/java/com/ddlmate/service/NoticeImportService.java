@@ -100,10 +100,13 @@ public class NoticeImportService {
 
     private final long maxRequestSizeBytes;
 
+    private final QuotaService quotaService;
+
     public NoticeImportService(TaskRepository taskRepository, CourseRepository courseRepository,
             TaskSourceRepository sourceRepository, AttachmentRepository attachmentRepository,
-            StorageService storageService,
+            StorageService storageService, QuotaService quotaService,
             @Value("${spring.servlet.multipart.max-request-size:20MB}") String maxRequestSize) {
+        this.quotaService = quotaService;
         this.taskRepository = taskRepository;
         this.courseRepository = courseRepository;
         this.sourceRepository = sourceRepository;
@@ -124,6 +127,8 @@ public class NoticeImportService {
     public NoticeImportResponse importNotices(NoticeImportRequest request, List<MultipartFile> files) {
         List<MultipartFile> uploads = files == null ? List.of() : files;
         List<String> notices = new ArrayList<>();
+        quotaService.checkNewTasks(request.tasks().size());
+        quotaService.checkNewFiles(uploads);
 
         // ---------- ① 请求级校验（不碰数据库、不碰磁盘） ----------
         if (request.tasks().isEmpty()) {

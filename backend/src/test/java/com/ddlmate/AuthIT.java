@@ -23,6 +23,9 @@ class AuthIT extends BaseIntegrationTest {
 
     @DynamicPropertySource
     static void authProperties(DynamicPropertyRegistry registry) {
+        // 独立的内存库：启用登录时的启动迁移会改名用户，不能影响其他测试类
+        registry.add("spring.datasource.url",
+                () -> "jdbc:h2:mem:authit;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1");
         registry.add("ddlmate.auth.enabled", () -> "true");
         registry.add("ddlmate.auth.username", () -> "chen");
         registry.add("ddlmate.auth.password-hash", () -> PasswordHasher.hash(PASSWORD.toCharArray()));
@@ -112,6 +115,6 @@ class AuthIT extends BaseIntegrationTest {
         mvc.perform(ApiTestSupport.json(onSite(post("/api/courses")).session(session),
                 ApiTestSupport.course("MA102", "线性代数")))
                 .andExpect(status().isForbidden());
-        assertThat(courseRepository.count()).isZero();
+        assertThat(asSystem(() -> courseRepository.count())).isZero();
     }
 }

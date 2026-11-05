@@ -10,14 +10,12 @@ import com.ddlmate.common.ResourceNotFoundException;
 import com.ddlmate.common.TimeZones;
 import com.ddlmate.domain.AppUser;
 import com.ddlmate.repository.AppUserRepository;
+import com.ddlmate.tenant.OwnerResolver;
 import com.ddlmate.web.dto.ProfileResponse;
 import com.ddlmate.web.dto.ProfileUpdateRequest;
 
 /**
- * 本地用户资料服务。
- *
- * <p>V1 没有登录鉴权，本服务只保证"本机有且只有一个用户档案"，作为以后加
- * Spring Security + user_id 外键时的迁移锚点。</p>
+ * 用户资料：当前登录用户（服务器版）或本机唯一用户（单人版）的资料读写。
  */
 @Service
 public class UserService {
@@ -28,18 +26,34 @@ public class UserService {
 
     private final String defaultDisplayName;
 
+    private final OwnerResolver ownerResolver;
+
     public UserService(
             AppUserRepository repository,
+            OwnerResolver ownerResolver,
             @Value("${ddlmate.user.username:local}") String defaultUsername,
             @Value("${ddlmate.user.display-name:本机同学}") String defaultDisplayName) {
         this.repository = repository;
+        this.ownerResolver = ownerResolver;
         this.defaultUsername = defaultUsername;
         this.defaultDisplayName = defaultDisplayName;
     }
 
-    /** 取当前（唯一）用户，不存在则创建。 */
+    /**
+     * 当前用户：服务器版为登录会话里的用户；本机单人版（未启用登录）为最早的那个用户。
+     */
     @Transactional
     public AppUser currentUser() {
+        long id = ownerResolver.resolveCurrentTenantIdentifier();
+        if (id > 0) {
+            return repository.findById(id).orElseGet(this::firstUser);
+        }
+        return firstUser();
+    }
+
+    /** 最早的用户（本机单人版唯一的那个），不存在则创建。 */
+    @Transactional
+    public AppUser firstUser() {
         List<AppUser> users = repository.findAllOrdered();
         if (!users.isEmpty()) {
             return users.get(0);

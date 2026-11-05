@@ -3,6 +3,7 @@ package com.ddlmate.domain;
 import java.time.OffsetDateTime;
 
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.TenantId;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import jakarta.persistence.Column;
@@ -26,6 +27,11 @@ public class Task {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    /** 数据归属的用户（app_users.id）。由 Hibernate 按当前登录用户自动写入并在所有查询里过滤。 */
+    @TenantId
+    @Column(name = "owner_id", updatable = false)
+    private Long ownerId;
 
     @Column(name = "title", nullable = false, length = 200)
     private String title;
@@ -180,5 +186,9 @@ public class Task {
 
     public OffsetDateTime getUpdatedAt() {
         return updatedAt;
+    }
+
+    public Long getOwnerId() {
+        return ownerId;
     }
 }

@@ -14,10 +14,9 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
 /**
- * 本机本地用户资料。
+ * 用户账号：本机单人版只有一个；服务器版每个注册用户一个，所有业务数据按 id 归属（owner_id）。
  *
- * <p>V1 是仅绑定 127.0.0.1 的单人开发版本，这里**不是登录认证**，只是为后续多用户迁移预留一个锚点：
- * 正式上线前会引入 Spring Security，并给 courses/tasks 等表加上 user_id 外键。</p>
+ * <p>密码只存 PBKDF2 哈希；角色 ADMIN 可以开关注册等（第一个账号即站长）。</p>
  */
 @Entity
 @Table(name = "app_users", uniqueConstraints = @UniqueConstraint(name = "uk_app_users_username", columnNames = "username"))
@@ -43,6 +42,14 @@ public class AppUser {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
+
+    /** PBKDF2 哈希；本机单人版没有密码时为空。 */
+    @Column(name = "password_hash", length = 255)
+    private String passwordHash;
+
+    /** ADMIN / USER；老数据为空时按 USER 处理。 */
+    @Column(name = "role", length = 16)
+    private String role;
 
     protected AppUser() {
     }
@@ -87,5 +94,21 @@ public class AppUser {
 
     public OffsetDateTime getUpdatedAt() {
         return updatedAt;
+    }
+
+    public String getPasswordHash() {
+        return passwordHash;
+    }
+
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
+
+    public boolean isAdmin() {
+        return "ADMIN".equals(role);
+    }
+
+    public void setRole(String role) {
+        this.role = role;
     }
 }
