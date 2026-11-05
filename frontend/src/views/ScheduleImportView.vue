@@ -29,6 +29,7 @@ import {
 } from '@/ocr/tesseractClient'
 import { recognizeTimetableLayout } from '@/ocr/timetableLayout'
 import { weekViewImportGate } from '@/ocr/importScope'
+import { importBlockReason } from '@/ocr/importValidation'
 
 const router = useRouter()
 
@@ -97,17 +98,11 @@ watch(() => JSON.stringify([semesterStartDate.value, selectedCandidates.value
   .filter(row => row.sourceWeekView)
   .map(row => [row.id, row.startWeek, row.endWeek, row.weekPattern])]), () => { weekViewConfirmed.value = false })
 
-const canSubmit = computed(() => {
-  if (submitting.value || ocrState.running) return false
-  if (weekViewGate.value.blocked) return false
-  const rows = selectedCandidates.value
-  if (!rows.length) return false
-  return rows.every((row) => {
-    if (!row.weekday || !row.startTime || !row.endTime) return false
-    if (row.courseMode === 'existing') return Boolean(row.existingCourseId)
-    return Boolean(row.courseName?.trim())
-  })
-})
+/** 第一条挡住导入的原因；空串表示可以导入。按钮旁实时显示，点击时同样用它检查。 */
+const blockReason = computed(() => importBlockReason(selectedCandidates.value, {
+  courses: courses.value, gate: weekViewGate.value, semesterStartDate: semesterStartDate.value,
+}))
+const canSubmit = computed(() => !submitting.value && !ocrState.running && !blockReason.value)
 
 /** 代码是否已被占用（已有课程或本批候选）。 */
 function codeTaken(code, ignoreCandidate) {
@@ -611,41 +606,10 @@ async function submit() {
   notices.value = []
 
   const rows = selectedCandidates.value
-  if (!rows.length) {
-    submitError.value = '请至少勾选一条要导入的课表'
+  const problem = blockReason.value
+  if (problem) {
+    submitError.value = problem
     return
-  }
-  const invalidRow = rows.find((row) => !row.weekday || !row.startTime || !row.endTime)
-  if (invalidRow) {
-    submitError.value = `「${invalidRow.courseName || '有候选'}」还缺少星期或开始/结束时间，请补全后再导入`
-    return
-  }
-  const missingCourse = rows.find((row) => row.courseMode === 'existing' && !row.existingCourseId)
-  if (missingCourse) {
-    submitError.value = '有候选选择了"已有课程"但没有指定具体课程，请选择或改为新建课程'
-    return
-  }
-  if (rows.some((row) => row.startTime >= row.endTime)) {
-    submitError.value = '有候选的开始时间不早于结束时间，请修正'
-    return
-  }
-  const seenCodes = new Set()
-  for (const row of rows) {
-    if (row.courseMode === 'existing') continue
-    const code = String(row.code || '').trim().toLowerCase()
-    if (!code) {
-      submitError.value = `「${row.courseName}」缺少课程代码`
-      return
-    }
-    if (courses.value.some((course) => String(course.code || '').toLowerCase() === code)) {
-      submitError.value = `课程代码已被占用：${row.code}，请换一个`
-      return
-    }
-    if (seenCodes.has(code)) {
-      submitError.value = `同一次导入里有重复的课程代码：${row.code}`
-      return
-    }
-    seenCodes.add(code)
   }
 
   // 同一门新课程的多条课表共享一个课程（按课程名归并）
@@ -685,20 +649,6 @@ async function submit() {
       weekPattern: row.weekPattern || 'ALL',
     }
   })
-
-  // 周视图（"第 N 周"截图）必须显式确认 + 学期起点，避免把"只此一周"静默当成整学期
-  if (weekViewGate.value.blocked) {
-    submitError.value = weekViewGate.value.reason
-    return
-  }
-  if (!semesterStartDate.value && schedules.some((row) => row.startWeek && row.endWeek)) {
-    submitError.value = '填写了起止教学周，需要同时选择"学期第一周周一"（必须为周一）'
-    return
-  }
-  if (!semesterStartDate.value && schedules.some((row) => row.weekPattern !== 'ALL')) {
-    submitError.value = '单周/双周需要"学期第一周周一"，请先填写'
-    return
-  }
 
   submitting.value = true
   try {
@@ -1070,7 +1020,13 @@ async function submit() {
           </div>
           <p class="card__hint">确认后一次性写入；全部取消勾选则不写库。</p>
         </div>
-        <button class="btn btn--primary" type="button" :disabled="!canSubmit" @click="submit">
+        <button
+          class="btn btn--primary"
+          :class="{ 'btn--blocked': !canSubmit && !submitting }"
+          type="button"
+          :disabled="submitting || ocrState.running"
+          @click="submit"
+        >
           {{ submitting ? '导入中…' : '确认导入' }}
         </button>
       </div>
@@ -1082,8 +1038,8 @@ async function submit() {
         </ul>
       </div>
 
-      <p v-if="!canSubmit && !submitting" class="small muted" style="margin: 0">
-        导入按钮需要每条勾选的候选都填好：课程（已有课程需选择具体课程）、星期、开始与结束时间。
+      <p v-if="blockReason && !submitError && !submitting" class="small" style="margin: 0; color: var(--warn, #b45309)">
+        还不能导入：{{ blockReason }}
       </p>
     </section>
   </div>

@@ -933,6 +933,11 @@ hr {
   cursor: not-allowed;
 }
 
+/* 条件未满足但仍可点击：点了会说明还差什么，而不是毫无反应 */
+.btn--blocked {
+  opacity: 0.65;
+}
+
 .btn--primary {
   background: var(--primary);
   border-color: var(--primary);
