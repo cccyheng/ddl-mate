@@ -8,6 +8,9 @@ import LoadingState from '@/components/LoadingState.vue'
 import { summarizeMonth } from '@/utils/calendarStats'
 import { formatTimeOfDay, toDateKey } from '@/utils/datetime'
 
+/** embedded：嵌在「课程与课表」里作为月视图，不显示自己的页头。 */
+const props = defineProps({ embedded: { type: Boolean, default: false } })
+
 const route = useRoute()
 const router = useRouter()
 
@@ -138,7 +141,7 @@ onMounted(load)
 
 <template>
   <div>
-    <div class="page-head">
+    <div v-if="!props.embedded" class="page-head">
       <div>
         <h1>日历</h1>
         <p class="page-head__sub">课程与 DDL 一起看；点任意一天进入当天详情</p>

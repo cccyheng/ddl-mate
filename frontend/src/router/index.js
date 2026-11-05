@@ -56,8 +56,14 @@ const routes = [
   {
     path: '/courses',
     name: 'courses',
-    component: () => import('@/views/CourseListView.vue'),
+    component: () => import('@/views/CourseHomeView.vue'),
     meta: { title: '课程与课表' },
+  },
+  {
+    path: '/courses/manage',
+    name: 'course-manage',
+    component: () => import('@/views/CourseListView.vue'),
+    meta: { title: '编辑课程', section: 'courses' },
   },
   {
     path: '/courses/import-schedule',

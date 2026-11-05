@@ -231,10 +231,14 @@ onMounted(load)
   <div>
     <div class="page-head">
       <div>
-        <h1>课程与课表</h1>
-        <p class="page-head__sub">集中管理课程和每周安排，支持照片导入与单双周设置。</p>
+        <h1>编辑课程</h1>
+        <p class="page-head__sub">增删改课程和每周上课安排，支持照片导入与单双周设置。</p>
       </div>
       <div class="row">
+        <RouterLink class="btn" to="/courses">
+          <AppIcon name="chevronRight" :size="16" style="transform: rotate(180deg)" />
+          返回课表
+        </RouterLink>
         <RouterLink class="btn btn--primary" to="/courses/import-schedule">
           <AppIcon name="camera" :size="17" />
           照片导入课表

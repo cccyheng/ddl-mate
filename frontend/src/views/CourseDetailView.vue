@@ -155,7 +155,7 @@ onMounted(load)
           {{ course.semester || '未填学期' }}
         </p>
       </div>
-      <RouterLink class="btn" to="/courses">返回课程列表</RouterLink>
+      <RouterLink class="btn" to="/courses/manage">返回课程列表</RouterLink>
     </div>
 
     <LoadingState v-if="loading" title="正在加载课程…" />
