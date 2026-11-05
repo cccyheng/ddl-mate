@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import {
   applyFocusAction,
   decodeFocus,
@@ -26,6 +26,7 @@ import ErrorState from '@/components/ErrorState.vue'
 import LoadingState from '@/components/LoadingState.vue'
 import { useRoute } from 'vue-router'
 import { courseApi, taskApi } from '@/api'
+import { loadAllTasks } from '@/domain/adapters'
 import { useSetting } from '@/composables/useSetting'
 import { dateKeyOf, shiftDateKey, weekdayShort } from '@/utils/dateKeys'
 
@@ -39,7 +40,41 @@ const now = ref(Date.now())
 let ticker = null
 
 const route = useRoute()
-const form = reactive({ mode: 'pomodoro', title: '', courseName: '', focusMinutes: 25, restMinutes: 5 })
+const form = reactive({ mode: 'pomodoro', title: '', courseName: '', courseId: null, taskChoice: '', focusMinutes: 25, restMinutes: 5 })
+
+/* ---------- 这次专注：课程 + 正在做的事 ---------- */
+const openTasks = ref([])
+const TYPE_PREFIX = { EXAM: '考试', HOMEWORK: '作业', REPORT: '报告', PROJECT: '项目' }
+const courseTasks = computed(() =>
+  openTasks.value
+    .filter((t) => (t.course?.id ?? null) === form.courseId)
+    .sort((a, b) => (a.deadline || '9999').localeCompare(b.deadline || '9999')),
+)
+function taskLabel(task) {
+  const prefix = TYPE_PREFIX[task.type]
+  const due = task.deadline ? ` · ${task.deadline.slice(5, 10).replace('-', '/')}` : ''
+  return `${prefix && !task.title.startsWith('复习') ? `${prefix}：` : ''}${task.title}${due}`
+}
+watch(
+  () => form.courseId,
+  (id) => {
+    form.courseName = courses.value.find((c) => c.id === id)?.name ?? ''
+    if (form.taskChoice !== 'custom') form.taskChoice = ''
+  },
+)
+watch(
+  () => form.taskChoice,
+  (choice) => {
+    if (choice === '' || choice === 'custom') return
+    const task = openTasks.value.find((t) => t.id === choice)
+    if (!task) return
+    form.title = task.title.slice(0, 200)
+    const minutes = Number(task.estimatedMinutes)
+    if (form.mode === 'pomodoro' && Number.isInteger(minutes) && minutes >= 15 && minutes <= 90) form.focusMinutes = minutes
+  },
+)
+const subjectTitle = computed(() => (active.value ? active.value.title : form.title.trim() || '自习'))
+const subjectCourse = computed(() => (active.value ? active.value.courseName : form.courseName))
 const BASE_FOCUS_PRESETS = [15, 25, 45, 60, 90]
 /** 从今日计划带来的分钟数不在常用档位里时，临时加一个档位，方便看到当前选择。 */
 const FOCUS_PRESETS = computed(() =>
@@ -65,12 +100,26 @@ const dialText = computed(() => {
 })
 
 /** 倒计时：圆环随剩余缩短；正计时：每 60 分钟转一圈。 */
-const DIAL_R = 116
+const DIAL_R = 132
 const DIAL_C = 2 * Math.PI * DIAL_R
 const dialOffset = computed(() => {
   if (!active.value) return form.mode === 'pomodoro' ? 0 : DIAL_C
   if (active.value.timer) return DIAL_C * (1 - elapsedMs.value / focusTarget(active.value))
   return DIAL_C * (1 - (elapsedMs.value % 3600000) / 3600000)
+})
+
+/** 表盘刻度：60 格，每 5 格一个长刻度。 */
+const DIAL_TICKS = Array.from({ length: 60 }, (_, i) => {
+  const angle = (i / 60) * Math.PI * 2
+  const outer = 146
+  const inner = i % 5 === 0 ? 138 : 142
+  return {
+    x1: 150 + outer * Math.cos(angle),
+    y1: 150 + outer * Math.sin(angle),
+    x2: 150 + inner * Math.cos(angle),
+    y2: 150 + inner * Math.sin(angle),
+    major: i % 5 === 0,
+  }
 })
 
 const dialLabel = computed(() => {
@@ -207,8 +256,14 @@ onMounted(async () => {
   }, 500)
   document.addEventListener('fullscreenchange', onFullscreenChange)
   try {
-    const [, , courseList] = await Promise.all([focus.load(), goals.load(), courseApi.list()])
+    const [, , courseList, taskList] = await Promise.all([
+      focus.load(),
+      goals.load(),
+      courseApi.list(),
+      loadAllTasks().catch(() => []),
+    ])
     courses.value = courseList
+    openTasks.value = taskList.filter((t) => !['DONE', 'CANCELLED', 'ARCHIVED'].includes(t.status))
     await prefillFromRoute()
   } catch (err) {
     loadError.value = err.message
@@ -226,8 +281,11 @@ async function prefillFromRoute() {
   }
   const task = await taskApi.get(taskId).catch(() => null)
   if (!task) return
-  form.title = task.title.slice(0, 200)
+  form.courseId = task.course?.id ?? null
   form.courseName = task.course?.name ?? ''
+  await Promise.resolve()
+  form.taskChoice = openTasks.value.some((t) => t.id === task.id) ? task.id : 'custom'
+  form.title = task.title.slice(0, 200)
   const minutes = Number(route.query.minutes)
   if (Number.isInteger(minutes) && minutes >= 1) {
     form.mode = 'pomodoro'
@@ -255,7 +313,7 @@ onBeforeUnmount(() => {
     <ErrorState v-if="loadError" :message="loadError" @retry="$router.go(0)" />
     <LoadingState v-else-if="!store || !goals.data.value" title="正在读取专注记录…" />
 
-    <div v-else class="split">
+    <div v-else class="focus-layout">
       <section ref="dialCard" class="card focus-stage" :class="{ 'focus-stage--fullscreen': isFullscreen }">
         <div class="row row--between focus-stage__head">
           <div v-if="!active" class="seg" role="tablist" aria-label="计时方式">
@@ -275,121 +333,155 @@ onBeforeUnmount(() => {
               {{ option.label }}
             </button>
           </div>
-          <div v-else class="focus-stage__now">
-            <strong>{{ active.title }}</strong>
-            <span v-if="active.courseName" class="muted small"> · {{ active.courseName }}</span>
-          </div>
+          <span v-else class="badge" :class="isRest ? 'badge--info' : 'badge--primary'">{{ isRest ? '休息' : active.timer ? '番茄钟' : '正计时' }}</span>
           <button type="button" class="icon-btn" :title="isFullscreen ? '退出全屏' : '全屏专注'" @click="toggleFullscreen">
             <AppIcon :name="isFullscreen ? 'close' : 'spark'" :size="18" />
           </button>
         </div>
 
-        <div class="dial" :class="{ 'dial--rest': isRest }">
-          <svg viewBox="0 0 260 260" aria-hidden="true">
-            <circle class="dial__track" cx="130" cy="130" :r="DIAL_R" fill="none" stroke-width="12" />
-            <circle
-              class="dial__arc"
-              cx="130"
-              cy="130"
-              :r="DIAL_R"
-              fill="none"
-              stroke-width="12"
-              stroke-linecap="round"
-              :stroke-dasharray="DIAL_C"
-              :stroke-dashoffset="dialOffset"
-            />
-          </svg>
-          <div class="dial__center" role="timer" aria-live="off">
-            <span class="dial__time">{{ dialText }}</span>
-            <span class="dial__label">{{ dialLabel }}</span>
-          </div>
-        </div>
-
-        <div v-if="clockIssue" class="alert alert--warn">
-          {{ clockIssue }}
-          <div class="row" style="margin-top: 8px">
-            <button type="button" class="btn btn--sm" @click="run({ type: 'recover' })">舍弃未确认的计时段</button>
-          </div>
-        </div>
-        <div v-if="actionError" class="alert alert--danger">{{ actionError }}</div>
-        <div v-if="prefillNote && !active" class="alert alert--success">{{ prefillNote }}</div>
-
-        <!-- 未开始：设置 -->
-        <div v-if="!active" class="stack focus-setup">
-          <div class="form-grid">
-            <label class="field">
-              <span class="field__label">学习内容</span>
-              <input v-model="form.title" type="text" maxlength="200" placeholder="例如：复习第三章（留空记为「自习」）" />
-            </label>
-            <label class="field">
-              <span class="field__label">课程（可选）</span>
-              <select v-model="form.courseName">
-                <option value="">不关联课程</option>
-                <option v-for="course in courses" :key="course.id" :value="course.name">{{ course.name }}</option>
-              </select>
-            </label>
-          </div>
-          <div v-if="form.mode === 'pomodoro'" class="stack">
-            <div class="row">
-              <span class="muted small focus-setup__label">专注</span>
-              <button
-                v-for="m in FOCUS_PRESETS"
-                :key="m"
-                type="button"
-                class="chip"
-                :class="{ 'chip--active': Number(form.focusMinutes) === m }"
-                @click="form.focusMinutes = m"
-              >
-                {{ m }} 分钟
-              </button>
+        <div class="focus-stage__body">
+          <div class="focus-stage__dial">
+            <div class="focus-subject">
+              <span v-if="subjectCourse" class="focus-subject__course"><AppIcon name="book" :size="14" />{{ subjectCourse }}</span>
+              <span class="focus-subject__title">{{ subjectTitle }}</span>
             </div>
-            <div class="row">
-              <span class="muted small focus-setup__label">休息</span>
-              <button
-                v-for="m in REST_PRESETS"
-                :key="m"
-                type="button"
-                class="chip"
-                :class="{ 'chip--active': Number(form.restMinutes) === m }"
-                @click="form.restMinutes = m"
-              >
-                {{ m }} 分钟
-              </button>
+            <div class="dial" :class="{ 'dial--rest': isRest }">
+              <svg viewBox="0 0 300 300" aria-hidden="true">
+                <defs>
+                  <linearGradient id="dialGradient" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" class="dial__stop-a" />
+                    <stop offset="100%" class="dial__stop-b" />
+                  </linearGradient>
+                </defs>
+                <line
+                  v-for="(tick, i) in DIAL_TICKS"
+                  :key="i"
+                  :x1="tick.x1"
+                  :y1="tick.y1"
+                  :x2="tick.x2"
+                  :y2="tick.y2"
+                  class="dial__tick"
+                  :class="{ 'dial__tick--major': tick.major }"
+                />
+                <circle class="dial__track" cx="150" cy="150" :r="DIAL_R" fill="none" stroke-width="14" />
+                <circle
+                  class="dial__arc"
+                  cx="150"
+                  cy="150"
+                  :r="DIAL_R"
+                  fill="none"
+                  stroke="url(#dialGradient)"
+                  stroke-width="14"
+                  stroke-linecap="round"
+                  :stroke-dasharray="DIAL_C"
+                  :stroke-dashoffset="dialOffset"
+                />
+              </svg>
+              <div class="dial__center" role="timer" aria-live="off">
+                <span class="dial__label">{{ dialLabel }}</span>
+                <span class="dial__time">{{ dialText }}</span>
+                <span v-if="active?.timer && !isRest" class="dial__sub">共 {{ active.timer.focusMinutes }} 分钟 · 休息 {{ active.timer.restMinutes }} 分钟</span>
+                <span v-else-if="!active && form.mode === 'pomodoro'" class="dial__sub">之后休息 {{ form.restMinutes }} 分钟</span>
+              </div>
             </div>
           </div>
-          <button type="button" class="btn btn--primary btn--lg" :disabled="focus.saving.value" @click="start">
-            <AppIcon name="play" :size="18" />开始{{ form.mode === 'pomodoro' ? '番茄专注' : '计时' }}
-          </button>
-        </div>
 
-        <!-- 进行中：控制 -->
-        <div v-else class="row focus-controls">
-          <template v-if="timeUp && !isRest">
-            <button type="button" class="btn btn--primary btn--lg" @click="run({ type: 'finishAndRest' })">保存并休息</button>
-            <button type="button" class="btn btn--lg" @click="run({ type: 'finish' })">保存并结束</button>
-          </template>
-          <template v-else-if="isRest">
-            <button type="button" class="btn btn--primary btn--lg" @click="run({ type: 'nextFocus' })">开始下一轮</button>
-            <button type="button" class="btn btn--lg" @click="run({ type: 'finish' })">结束休息</button>
-          </template>
-          <template v-else>
-            <button v-if="running" type="button" class="btn btn--lg" :disabled="!!clockIssue" @click="run({ type: 'pause' })">
-              <AppIcon name="pause" :size="18" />暂停
-            </button>
-            <button v-else type="button" class="btn btn--primary btn--lg" :disabled="!!clockIssue" @click="run({ type: 'resume' })">
-              <AppIcon name="play" :size="18" />继续
-            </button>
-            <button type="button" class="btn btn--lg" :disabled="!!clockIssue" @click="run({ type: 'finish' })">
-              <AppIcon name="stop" :size="16" />结束并保存
-            </button>
-            <button v-if="active.timer" type="button" class="btn btn--lg" :disabled="!!clockIssue" @click="run({ type: 'finishAndRest' })">
-              提前休息
-            </button>
-          </template>
-          <button type="button" class="btn btn--ghost" @click="discard">放弃</button>
+          <div class="focus-stage__panel">
+            <div v-if="clockIssue" class="alert alert--warn">
+              {{ clockIssue }}
+              <div class="row" style="margin-top: 8px">
+                <button type="button" class="btn btn--sm" @click="run({ type: 'recover' })">舍弃未确认的计时段</button>
+              </div>
+            </div>
+            <div v-if="actionError" class="alert alert--danger">{{ actionError }}</div>
+            <div v-if="prefillNote && !active" class="alert alert--success">{{ prefillNote }}</div>
+
+            <!-- 未开始：这次专注 + 时长 -->
+            <div v-if="!active" class="stack focus-setup">
+              <h2 class="focus-setup__title">这次专注</h2>
+              <label class="field">
+                <span class="field__label">课程</span>
+                <select v-model="form.courseId">
+                  <option :value="null">不关联课程</option>
+                  <option v-for="course in courses" :key="course.id" :value="course.id">{{ course.name }}</option>
+                </select>
+              </label>
+              <label class="field">
+                <span class="field__label">正在做</span>
+                <select v-model="form.taskChoice">
+                  <option value="">{{ courseTasks.length ? '选择这门课的任务 / 复习…' : form.courseId ? '这门课暂时没有待办，自己填写' : '先选课程，或自己填写' }}</option>
+                  <option v-for="task in courseTasks" :key="task.id" :value="task.id">{{ taskLabel(task) }}</option>
+                  <option value="custom">自己填写…</option>
+                </select>
+              </label>
+              <label v-if="form.taskChoice === 'custom' || form.taskChoice === ''" class="field">
+                <span class="field__label">内容</span>
+                <input v-model="form.title" type="text" maxlength="200" placeholder="例如：复习第三章（留空记为「自习」）" />
+              </label>
+              <div v-if="form.mode === 'pomodoro'" class="stack" style="gap: 10px">
+                <div class="row">
+                  <span class="muted small focus-setup__label">专注</span>
+                  <button
+                    v-for="m in FOCUS_PRESETS"
+                    :key="m"
+                    type="button"
+                    class="chip"
+                    :class="{ 'chip--active': Number(form.focusMinutes) === m }"
+                    @click="form.focusMinutes = m"
+                  >
+                    {{ m }} 分钟
+                  </button>
+                </div>
+                <div class="row">
+                  <span class="muted small focus-setup__label">休息</span>
+                  <button
+                    v-for="m in REST_PRESETS"
+                    :key="m"
+                    type="button"
+                    class="chip"
+                    :class="{ 'chip--active': Number(form.restMinutes) === m }"
+                    @click="form.restMinutes = m"
+                  >
+                    {{ m }} 分钟
+                  </button>
+                </div>
+              </div>
+              <button type="button" class="btn btn--primary btn--lg focus-start" :disabled="focus.saving.value" @click="start">
+                <AppIcon name="play" :size="18" />开始{{ form.mode === 'pomodoro' ? '番茄专注' : '计时' }}
+              </button>
+            </div>
+
+            <!-- 进行中：控制 -->
+            <div v-else class="stack focus-controls">
+              <template v-if="timeUp && !isRest">
+                <button type="button" class="btn btn--primary btn--lg" @click="run({ type: 'finishAndRest' })">保存并休息</button>
+                <button type="button" class="btn btn--lg" @click="run({ type: 'finish' })">保存并结束</button>
+              </template>
+              <template v-else-if="isRest">
+                <button type="button" class="btn btn--primary btn--lg" @click="run({ type: 'nextFocus' })">开始下一轮</button>
+                <button type="button" class="btn btn--lg" @click="run({ type: 'finish' })">结束休息</button>
+              </template>
+              <template v-else>
+                <button v-if="running" type="button" class="btn btn--lg" :disabled="!!clockIssue" @click="run({ type: 'pause' })">
+                  <AppIcon name="pause" :size="18" />暂停
+                </button>
+                <button v-else type="button" class="btn btn--primary btn--lg" :disabled="!!clockIssue" @click="run({ type: 'resume' })">
+                  <AppIcon name="play" :size="18" />继续
+                </button>
+                <button type="button" class="btn btn--lg" :disabled="!!clockIssue" @click="run({ type: 'finish' })">
+                  <AppIcon name="stop" :size="16" />结束并保存
+                </button>
+                <button v-if="active.timer" type="button" class="btn btn--lg" :disabled="!!clockIssue" @click="run({ type: 'finishAndRest' })">
+                  提前休息
+                </button>
+              </template>
+              <button type="button" class="btn btn--ghost" @click="discard">放弃</button>
+            </div>
+          </div>
         </div>
       </section>
 
+      <div class="split">
       <aside class="stack">
         <section class="card">
           <h2 class="section-title">今日与本周</h2>
@@ -484,6 +576,7 @@ onBeforeUnmount(() => {
           </div>
         </div>
       </section>
+      </div>
     </div>
 
     <div v-if="editor.open" class="modal-backdrop" @click.self="editor.open = false">
@@ -538,38 +631,113 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.focus-layout {
+  display: grid;
+  gap: var(--space-4);
+}
+
 .focus-stage {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 14px;
+  padding: clamp(18px, 3vw, 32px);
+  background:
+    radial-gradient(120% 90% at 20% 0%, var(--primary-tint), transparent 60%),
+    var(--surface);
 }
 
 .focus-stage__head {
   min-height: 40px;
 }
 
-.focus-stage__now {
+.focus-stage__body {
+  display: grid;
+  gap: clamp(18px, 3vw, 36px);
+  align-items: center;
+}
+
+@media (min-width: 1180px) {
+  .focus-stage__body {
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+  }
+}
+
+.focus-stage__dial .dial {
+  width: min(420px, 100%);
+}
+
+.focus-stage__dial {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
   min-width: 0;
+}
+
+.focus-subject {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  text-align: center;
+}
+
+.focus-subject__course {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.focus-subject__title {
+  font-size: clamp(1.15rem, 2.4vw, 1.5rem);
+  font-weight: 700;
+  letter-spacing: -0.01em;
   overflow-wrap: anywhere;
 }
 
-.focus-stage--fullscreen {
-  justify-content: center;
-  padding: 6vh 8vw;
-  border-radius: 0;
-  background: var(--bg);
+.focus-stage__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
 }
 
-.focus-stage--fullscreen .dial {
-  width: min(460px, 70vh);
+.focus-setup__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
 }
 
 .focus-setup__label {
   width: 2.5em;
 }
 
-.focus-controls {
+.focus-start {
+  width: 100%;
   justify-content: center;
+}
+
+.focus-controls .btn {
+  width: 100%;
+  justify-content: center;
+}
+
+.focus-stage--fullscreen {
+  justify-content: center;
+  padding: 5vh 6vw;
+  border-radius: 0;
+  background: var(--bg);
+}
+
+.focus-stage--fullscreen .dial {
+  width: min(560px, 72vh);
 }
 
 .focus-records {

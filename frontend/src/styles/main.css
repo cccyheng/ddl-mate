@@ -1,75 +1,75 @@
 /* =====================================================================
    DDL Mate 全局样式
-   设计方向：温暖的校园日程工具。暖白纸感背景 + 墨绿主色 + 陶土橙警示，
-   安静、可快速扫读；不加载网络字体与图片资源。
+   设计方向：克制、清爽的学习工作台。冷调雾白底 + 墨靛蓝主色 + 铜橙强调，
+   层次靠明度与细腻阴影；深色为午夜蓝黑。不加载网络字体与图片资源。
    ===================================================================== */
 
 :root {
   color-scheme: light;
 
-  /* 底色与纸面：暖白分三层（页面 < 卡片内衬 < 卡片），层次靠明度而不是粗边框 */
-  --bg: #f4f3ee;
-  --bg-deep: #ebe9e1;
+  /* 底色与纸面：冷调雾白分三层（页面 < 卡片内衬 < 卡片） */
+  --bg: #f3f4f7;
+  --bg-deep: #e9ebf0;
   --surface: #ffffff;
-  --surface-soft: #f9f8f4;
-  --surface-mute: #f1efe8;
+  --surface-soft: #f8f9fb;
+  --surface-mute: #eef0f4;
   --surface-raised: #ffffff;
-  --surface-warm: #fffbf8;
-  --surface-glass: rgba(244, 243, 238, 0.82);
-  --border: #e7e4da;
-  --border-strong: #d6d1c2;
-  --border-hover: #c6c0ac;
+  --surface-warm: #fbfaf8;
+  --surface-glass: rgba(243, 244, 247, 0.8);
+  --border: #e3e6ec;
+  --border-strong: #d2d7e0;
+  --border-hover: #bcc3cf;
 
-  /* 文字：墨色正文 */
-  --text: #1f2d27;
-  --text-soft: #4b5c53;
-  --text-muted: #6b7a71;
-  --text-faint: #94a097;
+  /* 文字：墨黑正文，冷灰辅助 */
+  --text: #161b26;
+  --text-soft: #434c5c;
+  --text-muted: #667083;
+  --text-faint: #97a0af;
 
-  /* 主色：森林绿 */
-  --primary: #2b634d;
-  --primary-dark: #1d4a39;
-  --primary-soft: #e4eee8;
-  --primary-tint: #f0f6f2;
-  --primary-line: rgba(43, 99, 77, 0.18);
+  /* 主色：墨靛蓝 */
+  --primary: #3a4d94;
+  --primary-dark: #2a3a76;
+  --primary-soft: #e7ebf6;
+  --primary-tint: #f2f4fb;
+  --primary-line: rgba(58, 77, 148, 0.18);
   --on-primary: #ffffff;
-  --brand-ink: #f3efe3;
+  --brand-ink: #eef1fa;
 
-  /* 陶土橙：紧迫截止 */
-  --clay: #b85a3b;
-  --clay-dark: #94432a;
-  --clay-soft: #fbede6;
+  /* 铜橙：紧迫截止与强调 */
+  --clay: #bd6440;
+  --clay-dark: #994c2e;
+  --clay-soft: #fbefe9;
 
-  /* 语义色统一由森林绿 / 陶土橙派生 */
-  --danger: #b4573a;
-  --danger-dark: #8f4127;
-  --danger-soft: #fbeee8;
-  --warn: #9a6a22;
-  --warn-soft: #faf2e2;
-  --warn-line: #f0dcbc;
-  --danger-line: #eccdbc;
-  --success-line: #cfe0d6;
-  --success: #2c6b4f;
-  --success-soft: #e9f2ec;
-  --info: #3d6680;
-  --info-soft: #e8f0f5;
+  /* 语义色 */
+  --danger: #bf4f40;
+  --danger-dark: #993b2f;
+  --danger-soft: #fcedea;
+  --warn: #9e6b1f;
+  --warn-soft: #fbf3e3;
+  --warn-line: #efdfbf;
+  --danger-line: #f0cfc8;
+  --success-line: #cde4d8;
+  --success: #2f7a59;
+  --success-soft: #e8f3ed;
+  --info: #3a6ca6;
+  --info-soft: #e8f0f9;
 
   /* 首页焦点卡（深色大卡）上的文字 */
   --hero-text-soft: rgba(255, 255, 255, 0.78);
   --hero-fill: rgba(255, 255, 255, 0.14);
   --hero-line: rgba(255, 255, 255, 0.5);
-  --overlay: rgba(24, 34, 30, 0.46);
-  --page-glow-a: rgba(43, 99, 77, 0.06);
-  --page-glow-b: rgba(184, 90, 59, 0.045);
+  --overlay: rgba(14, 18, 30, 0.46);
+  --page-glow-a: rgba(58, 77, 148, 0.06);
+  --page-glow-b: rgba(189, 100, 64, 0.035);
 
   --radius-sm: 8px;
   --radius: 12px;
   --radius-lg: 16px;
   --radius-xl: 22px;
 
-  --shadow-sm: 0 1px 2px rgba(31, 45, 39, 0.05);
-  --shadow: 0 1px 2px rgba(31, 45, 39, 0.04), 0 12px 32px -20px rgba(31, 45, 39, 0.28);
-  --shadow-lg: 0 2px 6px rgba(31, 45, 39, 0.05), 0 28px 56px -30px rgba(31, 45, 39, 0.38);
+  --shadow-sm: 0 1px 2px rgba(22, 27, 38, 0.05);
+  --shadow: 0 1px 2px rgba(22, 27, 38, 0.04), 0 12px 32px -20px rgba(30, 40, 80, 0.26);
+  --shadow-lg: 0 2px 6px rgba(22, 27, 38, 0.05), 0 28px 56px -30px rgba(30, 40, 80, 0.36);
 
   --space-1: 4px;
   --space-2: 8px;
@@ -88,114 +88,112 @@
     'Hiragino Sans GB', 'Source Han Sans SC', 'Noto Sans CJK SC', sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Courier New', monospace;
 
-  --focus-ring: 0 0 0 3px rgba(43, 99, 77, 0.26);
+  --focus-ring: 0 0 0 3px rgba(58, 77, 148, 0.24);
 }
 
-/* 深色：跟随系统；用户在顶栏手动选择后以 data-theme 为准 */
+/* 深色（午夜蓝黑）：跟随系统；用户在顶栏手动选择后以 data-theme 为准 */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
     color-scheme: dark;
-    --bg: #111513;
-    --bg-deep: #0c0f0d;
-    --surface: #181d1a;
-    --surface-soft: #1c221f;
-    --surface-mute: #232a26;
-    --surface-raised: #1e2421;
-    --surface-warm: #1f2220;
-    --surface-glass: rgba(17, 21, 19, 0.82);
-    --border: #2a322e;
-    --border-strong: #37413c;
-    --border-hover: #4a5650;
-    --text: #e6ebe7;
-    --text-soft: #b8c3bc;
-    --text-muted: #8d9991;
-    --text-faint: #69756d;
-    --primary: #6cbc94;
-    --primary-dark: #94d4b3;
-    --primary-soft: rgba(108, 188, 148, 0.14);
-    --primary-tint: rgba(108, 188, 148, 0.07);
-    --primary-line: rgba(108, 188, 148, 0.28);
-    --on-primary: #0d1a14;
-    --brand-ink: #0d1a14;
-    --clay: #e28a66;
-    --clay-dark: #f0a685;
-    --clay-soft: rgba(226, 138, 102, 0.14);
-    --danger: #e8896a;
-    --danger-dark: #f3a68a;
-    --danger-soft: rgba(232, 137, 106, 0.14);
-    --warn: #e0b260;
-    --warn-soft: rgba(224, 178, 96, 0.13);
-    --warn-line: rgba(224, 178, 96, 0.3);
-  --danger-line: rgba(232, 137, 106, 0.32);
-  --success-line: rgba(108, 188, 148, 0.3);
-    --danger-line: rgba(232, 137, 106, 0.32);
-    --success-line: rgba(108, 188, 148, 0.3);
-    --success: #6cbc94;
-    --success-soft: rgba(108, 188, 148, 0.13);
-    --info: #8bb7d4;
-    --info-soft: rgba(139, 183, 212, 0.13);
-    --hero-text-soft: rgba(13, 26, 20, 0.72);
-    --hero-fill: rgba(13, 26, 20, 0.1);
-    --hero-line: rgba(13, 26, 20, 0.35);
-    --overlay: rgba(0, 0, 0, 0.6);
-    --page-glow-a: rgba(108, 188, 148, 0.06);
-    --page-glow-b: rgba(226, 138, 102, 0.035);
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 14px 34px -22px rgba(0, 0, 0, 0.7);
-    --shadow-lg: 0 2px 6px rgba(0, 0, 0, 0.3), 0 30px 60px -30px rgba(0, 0, 0, 0.8);
-    --focus-ring: 0 0 0 3px rgba(108, 188, 148, 0.35);
+    --bg: #0e1117;
+    --bg-deep: #0a0c11;
+    --surface: #151923;
+    --surface-soft: #181d28;
+    --surface-mute: #1f2531;
+    --surface-raised: #1a1f2a;
+    --surface-warm: #1a1d25;
+    --surface-glass: rgba(14, 17, 23, 0.8);
+    --border: #252b37;
+    --border-strong: #323a49;
+    --border-hover: #465064;
+    --text: #e8ebf1;
+    --text-soft: #b7bfcc;
+    --text-muted: #8a93a4;
+    --text-faint: #626b7c;
+    --primary: #94a6f6;
+    --primary-dark: #b9c5fb;
+    --primary-soft: rgba(148, 166, 246, 0.15);
+    --primary-tint: rgba(148, 166, 246, 0.07);
+    --primary-line: rgba(148, 166, 246, 0.3);
+    --on-primary: #0c1124;
+    --brand-ink: #0c1124;
+    --clay: #e9996f;
+    --clay-dark: #f3b28f;
+    --clay-soft: rgba(233, 153, 111, 0.14);
+    --danger: #ef8b7c;
+    --danger-dark: #f6a99d;
+    --danger-soft: rgba(239, 139, 124, 0.14);
+    --warn: #e2b566;
+    --warn-soft: rgba(226, 181, 102, 0.13);
+    --warn-line: rgba(226, 181, 102, 0.3);
+    --danger-line: rgba(239, 139, 124, 0.32);
+    --success-line: rgba(111, 198, 156, 0.3);
+    --success: #6fc69c;
+    --success-soft: rgba(111, 198, 156, 0.13);
+    --info: #8ab9ec;
+    --info-soft: rgba(138, 185, 236, 0.13);
+    --hero-text-soft: rgba(12, 17, 36, 0.72);
+    --hero-fill: rgba(12, 17, 36, 0.1);
+    --hero-line: rgba(12, 17, 36, 0.35);
+    --overlay: rgba(4, 6, 12, 0.62);
+    --page-glow-a: rgba(148, 166, 246, 0.07);
+    --page-glow-b: rgba(233, 153, 111, 0.03);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.32), 0 14px 34px -22px rgba(0, 0, 0, 0.75);
+    --shadow-lg: 0 2px 6px rgba(0, 0, 0, 0.32), 0 30px 60px -30px rgba(0, 0, 0, 0.85);
+    --focus-ring: 0 0 0 3px rgba(148, 166, 246, 0.38);
   }
 }
 
 :root[data-theme='dark'] {
   color-scheme: dark;
-  --bg: #111513;
-  --bg-deep: #0c0f0d;
-  --surface: #181d1a;
-  --surface-soft: #1c221f;
-  --surface-mute: #232a26;
-  --surface-raised: #1e2421;
-  --surface-warm: #1f2220;
-  --surface-glass: rgba(17, 21, 19, 0.82);
-  --border: #2a322e;
-  --border-strong: #37413c;
-  --border-hover: #4a5650;
-  --text: #e6ebe7;
-  --text-soft: #b8c3bc;
-  --text-muted: #8d9991;
-  --text-faint: #69756d;
-  --primary: #6cbc94;
-  --primary-dark: #94d4b3;
-  --primary-soft: rgba(108, 188, 148, 0.14);
-  --primary-tint: rgba(108, 188, 148, 0.07);
-  --primary-line: rgba(108, 188, 148, 0.28);
-  --on-primary: #0d1a14;
-  --brand-ink: #0d1a14;
-  --clay: #e28a66;
-  --clay-dark: #f0a685;
-  --clay-soft: rgba(226, 138, 102, 0.14);
-  --danger: #e8896a;
-  --danger-dark: #f3a68a;
-  --danger-soft: rgba(232, 137, 106, 0.14);
-  --warn: #e0b260;
-  --warn-soft: rgba(224, 178, 96, 0.13);
-  --warn-line: rgba(224, 178, 96, 0.3);
-  --danger-line: rgba(232, 137, 106, 0.32);
-  --success-line: rgba(108, 188, 148, 0.3);
-  --success: #6cbc94;
-  --success-soft: rgba(108, 188, 148, 0.13);
-  --info: #8bb7d4;
-  --info-soft: rgba(139, 183, 212, 0.13);
-  --hero-text-soft: rgba(13, 26, 20, 0.72);
-  --hero-fill: rgba(13, 26, 20, 0.1);
-  --hero-line: rgba(13, 26, 20, 0.35);
-  --overlay: rgba(0, 0, 0, 0.6);
-  --page-glow-a: rgba(108, 188, 148, 0.06);
-  --page-glow-b: rgba(226, 138, 102, 0.035);
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 14px 34px -22px rgba(0, 0, 0, 0.7);
-  --shadow-lg: 0 2px 6px rgba(0, 0, 0, 0.3), 0 30px 60px -30px rgba(0, 0, 0, 0.8);
-  --focus-ring: 0 0 0 3px rgba(108, 188, 148, 0.35);
+  --bg: #0e1117;
+  --bg-deep: #0a0c11;
+  --surface: #151923;
+  --surface-soft: #181d28;
+  --surface-mute: #1f2531;
+  --surface-raised: #1a1f2a;
+  --surface-warm: #1a1d25;
+  --surface-glass: rgba(14, 17, 23, 0.8);
+  --border: #252b37;
+  --border-strong: #323a49;
+  --border-hover: #465064;
+  --text: #e8ebf1;
+  --text-soft: #b7bfcc;
+  --text-muted: #8a93a4;
+  --text-faint: #626b7c;
+  --primary: #94a6f6;
+  --primary-dark: #b9c5fb;
+  --primary-soft: rgba(148, 166, 246, 0.15);
+  --primary-tint: rgba(148, 166, 246, 0.07);
+  --primary-line: rgba(148, 166, 246, 0.3);
+  --on-primary: #0c1124;
+  --brand-ink: #0c1124;
+  --clay: #e9996f;
+  --clay-dark: #f3b28f;
+  --clay-soft: rgba(233, 153, 111, 0.14);
+  --danger: #ef8b7c;
+  --danger-dark: #f6a99d;
+  --danger-soft: rgba(239, 139, 124, 0.14);
+  --warn: #e2b566;
+  --warn-soft: rgba(226, 181, 102, 0.13);
+  --warn-line: rgba(226, 181, 102, 0.3);
+  --danger-line: rgba(239, 139, 124, 0.32);
+  --success-line: rgba(111, 198, 156, 0.3);
+  --success: #6fc69c;
+  --success-soft: rgba(111, 198, 156, 0.13);
+  --info: #8ab9ec;
+  --info-soft: rgba(138, 185, 236, 0.13);
+  --hero-text-soft: rgba(12, 17, 36, 0.72);
+  --hero-fill: rgba(12, 17, 36, 0.1);
+  --hero-line: rgba(12, 17, 36, 0.35);
+  --overlay: rgba(4, 6, 12, 0.62);
+  --page-glow-a: rgba(148, 166, 246, 0.07);
+  --page-glow-b: rgba(233, 153, 111, 0.03);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.32), 0 14px 34px -22px rgba(0, 0, 0, 0.75);
+  --shadow-lg: 0 2px 6px rgba(0, 0, 0, 0.32), 0 30px 60px -30px rgba(0, 0, 0, 0.85);
+  --focus-ring: 0 0 0 3px rgba(148, 166, 246, 0.38);
 }
 
 * {
@@ -2648,7 +2646,7 @@ a.stat:hover {
 /* ---------- 表盘（专注计时） ---------- */
 .dial {
   position: relative;
-  width: min(280px, 72vw);
+  width: min(420px, 82vw);
   aspect-ratio: 1;
   margin: 0 auto;
 }
@@ -2657,19 +2655,40 @@ a.stat:hover {
   width: 100%;
   height: 100%;
   transform: rotate(-90deg);
+  overflow: visible;
 }
 
 .dial__track {
   stroke: var(--surface-mute);
 }
 
-.dial__arc {
-  stroke: var(--primary);
-  transition: stroke-dashoffset 0.6s linear;
+.dial__tick {
+  stroke: var(--border-strong);
+  stroke-width: 1.2;
+  stroke-linecap: round;
 }
 
-.dial--rest .dial__arc {
-  stroke: var(--info);
+.dial__tick--major {
+  stroke: var(--text-faint);
+  stroke-width: 2;
+}
+
+.dial__stop-a {
+  stop-color: var(--primary);
+}
+
+.dial__stop-b {
+  stop-color: var(--clay);
+}
+
+.dial__arc {
+  transition: stroke-dashoffset 0.6s linear;
+  filter: drop-shadow(0 4px 10px var(--primary-line));
+}
+
+.dial--rest .dial__stop-a,
+.dial--rest .dial__stop-b {
+  stop-color: var(--info);
 }
 
 .dial__center {
@@ -2679,19 +2698,28 @@ a.stat:hover {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 4px;
   text-align: center;
 }
 
 .dial__time {
-  font-size: clamp(2.2rem, 7vw, 3.1rem);
-  font-weight: 720;
-  letter-spacing: -0.03em;
+  font-size: clamp(3rem, 11vw, 5.2rem);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
 }
 
 .dial__label {
+  color: var(--primary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.dial__sub {
   color: var(--text-muted);
-  font-size: 0.86rem;
+  font-size: 0.82rem;
 }
 
 /* ---------- 双栏页面 ---------- */

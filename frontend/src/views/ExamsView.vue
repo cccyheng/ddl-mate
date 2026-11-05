@@ -1,13 +1,15 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { shanghaiToday } from '@domain/datetime'
+import { deadlineToShanghaiDateKey, shanghaiToday } from '@domain/datetime'
+import { readStoredStudyReferenceMinutes } from '@domain/studyReference'
 import { buildRevisionPreview, EXAM_REVISION_LIMITS, listExams } from '@domain/examRevision'
 import { decodeExamRevisionStore, EXAM_PLAN_LIMIT } from '@domain/examRevisionRepository'
 import AppIcon from '@/components/AppIcon.vue'
 import ErrorState from '@/components/ErrorState.vue'
 import LoadingState from '@/components/LoadingState.vue'
-import { taskApi } from '@/api'
+import { calendarApi, settingsApi, taskApi } from '@/api'
+import { defaultTotalMinutes, DIFFICULTY, examKindOf, planSmartRevision } from '@/domain/smartRevision'
 import { useSetting } from '@/composables/useSetting'
 import { loadAllCourses, loadAllTasks, toDomainTask } from '@/domain/adapters'
 import { SETTING_KEYS } from '@/domain/settingKeys'
@@ -38,6 +40,15 @@ const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日']
 
 const editor = reactive({
   open: false,
+  mode: 'smart',
+  difficulty: 'normal',
+  dailyBudget: 120,
+  totalHours: '',
+  sessionMinutes: '',
+  smartStart: '',
+  busyMap: {},
+  busyLoading: false,
+  smart: null,
   exam: null,
   startDate: '',
   endDate: '',
@@ -54,6 +65,12 @@ function openRevision(summary) {
   const dayBefore = summary.date ? shiftDateKey(summary.date, -1) : today
   Object.assign(editor, {
     open: true,
+    mode: 'smart',
+    difficulty: 'normal',
+    totalHours: '',
+    sessionMinutes: '',
+    smartStart: '',
+    smart: null,
     exam: summary.task,
     startDate: today,
     endDate: dayBefore < today ? today : dayBefore,
@@ -64,6 +81,151 @@ function openRevision(summary) {
     error: '',
     busy: false,
   })
+  loadBusy(summary)
+}
+
+/* ---------------------------------------------------------- 智能安排 */
+
+function minutesBetween(start, end) {
+  const toMin = (v) => {
+    const m = /^(\d{1,2}):(\d{2})/.exec(String(v || ''))
+    return m ? Number(m[1]) * 60 + Number(m[2]) : null
+  }
+  const a = toMin(start)
+  const b = toMin(end)
+  return a !== null && b !== null && b > a ? b - a : 0
+}
+
+/** 考前每天的负担：上课时长、当天到期的 DDL、其他考试。 */
+async function loadBusy(summary) {
+  editor.busyLoading = true
+  const busy = {}
+  const slot = (key) => (busy[key] ||= { classMinutes: 0, taskMinutes: 0, exams: [], examTomorrow: [] })
+  const today = shanghaiToday(new Date())
+  try {
+    try {
+      const saved = await settingsApi.get(SETTING_KEYS.STUDY_REFERENCE)
+      const minutes = readStoredStudyReferenceMinutes(saved?.value)
+      if (minutes) editor.dailyBudget = minutes
+    } catch {
+      /* 没设置就用默认 120 分钟 */
+    }
+    for (const task of tasks.value) {
+      if (task.id === summary.task.id || ['DONE', 'CANCELLED', 'ARCHIVED'].includes(task.status) || !task.deadline) continue
+      const key = deadlineToShanghaiDateKey(task.deadline)
+      if (!key || key < today) continue
+      if (task.type === 'EXAM') {
+        slot(key).exams.push(task.title)
+        slot(shiftDateKey(key, -1)).examTomorrow.push(task.title)
+      } else {
+        slot(key).taskMinutes += Number(task.estimatedMinutes) || 30
+      }
+    }
+    if (summary.date) {
+      const months = new Set()
+      for (let key = today; key <= summary.date && months.size < 6; key = shiftDateKey(key, 7)) months.add(key.slice(0, 7))
+      months.add(summary.date.slice(0, 7))
+      const results = await Promise.all([...months].map((m) => calendarApi.month(Number(m.slice(0, 4)), Number(m.slice(5, 7)))))
+      for (const month of results) {
+        for (const day of month.days || []) {
+          const minutes = (day.schedules || []).reduce((sum, s) => sum + minutesBetween(s.startTime, s.endTime), 0)
+          if (minutes) slot(day.date).classMinutes += minutes
+        }
+      }
+    }
+  } catch {
+    /* 读不到课表也能排，只是不考虑上课 */
+  } finally {
+    editor.busyMap = busy
+    editor.busyLoading = false
+    if (editor.open && editor.mode === 'smart') smartPreview()
+  }
+}
+
+const smartDefaults = computed(() => {
+  if (!editor.exam) return { hours: 0, minutes: 0 }
+  const kind = examKindOf(editor.exam.title)
+  return {
+    hours: Math.round((defaultTotalMinutes(kind, editor.difficulty) / 60) * 10) / 10,
+    minutes: DIFFICULTY[editor.difficulty].chunk,
+  }
+})
+
+function smartPreview() {
+  editor.error = ''
+  const examDate = deadlineToShanghaiDateKey(editor.exam?.deadline)
+  const result = planSmartRevision({
+    exam: { title: editor.exam.title, date: examDate },
+    today: shanghaiToday(new Date()),
+    startDate: editor.smartStart || undefined,
+    difficulty: editor.difficulty,
+    dailyBudget: Number(editor.dailyBudget) || 120,
+    totalMinutes: editor.totalHours ? Math.round(Number(editor.totalHours) * 60) : undefined,
+    sessionMinutes: Number(editor.sessionMinutes) || undefined,
+    topics: editor.topicsText.split('\n').map((t) => t.trim()).filter(Boolean),
+    busy: editor.busyMap,
+  })
+  editor.smart = result.ok ? result : null
+  if (!result.ok) editor.error = result.reason
+}
+
+function setDifficulty(value) {
+  editor.difficulty = value
+  smartPreview()
+}
+
+const smartByDate = computed(() => {
+  const groups = []
+  for (const session of editor.smart?.sessions || []) {
+    const last = groups.at(-1)
+    if (last && last.date === session.date) last.sessions.push(session)
+    else groups.push({ date: session.date, sessions: [session] })
+  }
+  return groups
+})
+
+/** 按智能预览创建复习任务，并记一份安排（进度条照常统计）。 */
+async function createSmartRevision() {
+  editor.busy = true
+  editor.error = ''
+  try {
+    const store = await plans.load()
+    if (store.plans.length >= EXAM_PLAN_LIMIT) throw new Error('复习安排已达到保存上限。')
+    const fresh = toDomainTask(await taskApi.get(editor.exam.id))
+    if (deadlineToShanghaiDateKey(fresh.deadline) !== deadlineToShanghaiDateKey(editor.exam.deadline)) {
+      throw new Error('考试时间刚刚变了，请重新预览。')
+    }
+    const taskIds = []
+    for (const session of editor.smart.sessions) {
+      const created = await taskApi.create({
+        title: session.title,
+        description: `为「${fresh.title}」复习：${session.topic}（智能安排：${session.reasons.join('；')}）`.slice(0, 1000),
+        courseId: fresh.courseId,
+        type: 'OTHER',
+        status: 'TODO',
+        priority: 3,
+        deadline: deadlineForWeb(session.date),
+        estimatedMinutes: session.minutes,
+      })
+      taskIds.push(created.id)
+    }
+    const plan = {
+      id: store.nextId,
+      examId: fresh.id,
+      examTitle: fresh.title,
+      createdAt: new Date().toISOString(),
+      fingerprint: JSON.stringify(['smart', fresh.id, fresh.deadline, editor.smart.sessions.map((s) => [s.date, s.minutes, s.topic])]).slice(0, 20000),
+      taskIds,
+    }
+    const next = { version: 1, nextId: store.nextId + 1, plans: [...store.plans, plan] }
+    if (!(await plans.save(next))) throw new Error(`复习任务已创建，但安排记录没保存：${plans.error.value}`)
+    editor.open = false
+    await load()
+  } catch (err) {
+    editor.error = err.message
+  } finally {
+    editor.busy = false
+  }
 }
 
 function draftInput() {
@@ -158,7 +320,7 @@ onMounted(load)
       <div>
         <span class="page-head__eyebrow"><AppIcon name="exam" :size="15" />考试</span>
         <h1>考试与复习</h1>
-        <p class="page-head__sub">类型为「考试」的任务都在这里；可以按主题把复习排到考前的日子，生成普通任务。</p>
+        <p class="page-head__sub">类型为「考试」的任务都在这里；「安排复习」会结合课表、DDL 和其他考试，智能排出考前复习计划。</p>
       </div>
       <div class="row">
       <RouterLink class="btn" to="/exams/import">
@@ -226,6 +388,81 @@ onMounted(load)
     <div v-if="editor.open" class="modal-backdrop" @click.self="editor.open = false">
       <div class="modal modal--wide" role="dialog" aria-modal="true" aria-label="安排复习">
         <h2 class="card__title" style="margin-bottom: 4px">安排复习：{{ editor.exam.title }}</h2>
+        <div class="segmented" role="tablist" style="margin: 8px 0 12px">
+          <button type="button" class="segmented__item" :class="{ 'segmented__item--active': editor.mode === 'smart' }" @click="editor.mode = 'smart'; smartPreview()">智能安排</button>
+          <button type="button" class="segmented__item" :class="{ 'segmented__item--active': editor.mode === 'manual' }" @click="editor.mode = 'manual'; editor.error = ''">手动安排</button>
+        </div>
+
+        <div v-if="editor.mode === 'smart'" class="stack">
+          <p class="card__hint" style="margin: 0">
+            按考试类型和难度估算总时长，避开课多的日子、当天到期的 DDL 和其他考试；越靠近考试排得越密，考前一天轻量回顾。
+          </p>
+          <div class="row" style="gap: 6px; flex-wrap: wrap; align-items: center">
+            <span class="muted small">这门课对我</span>
+            <button
+              v-for="(conf, key) in DIFFICULTY"
+              :key="key"
+              type="button"
+              class="chip"
+              :class="{ 'chip--active': editor.difficulty === key }"
+              @click="setDifficulty(key)"
+            >
+              {{ conf.label }}
+            </button>
+          </div>
+          <div class="form-grid">
+            <label class="field">
+              <span class="field__label">每天能用来学习（分钟）</span>
+              <input v-model="editor.dailyBudget" type="number" min="30" max="720" @change="smartPreview" />
+            </label>
+            <label class="field">
+              <span class="field__label">总复习时长（小时）</span>
+              <input v-model="editor.totalHours" type="number" min="0.5" max="100" step="0.5" :placeholder="`自动：${smartDefaults.hours}`" @change="smartPreview" />
+            </label>
+            <label class="field">
+              <span class="field__label">每次时长（分钟）</span>
+              <input v-model="editor.sessionMinutes" type="number" min="20" max="180" :placeholder="`自动：${smartDefaults.minutes}`" @change="smartPreview" />
+            </label>
+            <label class="field">
+              <span class="field__label">从哪天开始</span>
+              <input v-model="editor.smartStart" type="date" :placeholder="editor.smart?.startDate" @change="smartPreview" />
+              <span class="field__hint">留空：{{ editor.smart?.startDate || '按难度自动' }}</span>
+            </label>
+          </div>
+          <label class="field">
+            <span class="field__label">复习主题（每行一个，可不填）</span>
+            <textarea v-model="editor.topicsText" rows="3" placeholder="不填就按「梳理框架 → 重点精学 → 刷题真题 → 错题回顾」安排&#10;第一章 绪论&#10;第二章 线性表" @change="smartPreview" />
+          </label>
+          <p v-if="editor.busyLoading" class="muted small" style="margin: 0">正在读取课表和 DDL…</p>
+          <p v-if="editor.error" class="field__error">{{ editor.error }}</p>
+          <template v-if="editor.smart">
+            <div class="smart-summary">
+              <span><b>{{ editor.smart.sessions.length }}</b> 次复习</span>
+              <span>约 <b>{{ Math.round((editor.smart.plannedMinutes / 60) * 10) / 10 }}</b> 小时</span>
+              <span>{{ editor.smart.startDate }} → {{ editor.smart.endDate }}</span>
+            </div>
+            <div v-for="warning in editor.smart.warnings" :key="warning" class="alert alert--warn">{{ warning }}</div>
+            <div class="smart-days">
+              <div v-for="group in smartByDate" :key="group.date" class="smart-day">
+                <span class="smart-day__date mono">{{ group.date.slice(5) }}</span>
+                <div class="smart-day__items">
+                  <div v-for="(session, i) in group.sessions" :key="i" class="smart-item" :class="`smart-item--${session.phase}`">
+                    <span class="smart-item__title">{{ session.topic }}</span>
+                    <span class="smart-item__meta">{{ session.minutes }} 分钟 · {{ session.reasons.join(' · ') }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+          <div class="row" style="justify-content: flex-end">
+            <button type="button" class="btn btn--ghost" @click="editor.open = false">取消</button>
+            <button type="button" class="btn btn--primary" :disabled="!editor.smart || editor.busy" @click="createSmartRevision">
+              {{ editor.busy ? '正在创建…' : `创建 ${editor.smart?.sessions.length ?? 0} 个复习任务` }}
+            </button>
+          </div>
+        </div>
+
+        <template v-else>
         <p class="card__hint" style="margin-bottom: 14px">
           复习最晚到考试前一天；主题按顺序轮流排到选中的日子，每次最多 {{ EXAM_REVISION_LIMITS.maxSessions }} 次。
         </p>
@@ -282,6 +519,7 @@ onMounted(load)
             </button>
           </div>
         </div>
+        </template>
       </div>
     </div>
   </div>
@@ -327,6 +565,83 @@ onMounted(load)
 .exam-row:hover {
   text-decoration: none;
   background: var(--surface-soft);
+}
+
+.smart-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md, 10px);
+  background: var(--primary-soft);
+  color: var(--text);
+  font-size: 14px;
+}
+.smart-days {
+  display: grid;
+  gap: 6px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.smart-day {
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  gap: 10px;
+  align-items: start;
+}
+.smart-day__date {
+  padding-top: 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.smart-day__items {
+  display: grid;
+  gap: 4px;
+}
+.smart-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 7px 10px;
+  border-radius: var(--radius-sm, 8px);
+  border-left: 3px solid var(--primary);
+  background: var(--surface-soft);
+}
+.smart-item--practice {
+  border-left-color: var(--warn);
+}
+.smart-item--final {
+  border-left-color: var(--danger);
+}
+.smart-item__title {
+  font-size: 14px;
+  font-weight: 600;
+}
+.smart-item__meta {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.segmented {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+.segmented__item {
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  padding: 5px 14px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.segmented__item--active {
+  background: var(--primary);
+  color: var(--on-primary);
+  font-weight: 600;
 }
 
 .modal--wide {
