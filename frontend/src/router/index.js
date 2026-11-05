@@ -140,6 +140,12 @@ const routes = [
     meta: { title: '课表冲突检查' },
   },
   {
+    path: '/tools/school-import',
+    name: 'school-import',
+    component: () => import('@/views/SchoolImportView.vue'),
+    meta: { title: '学校一键导入' },
+  },
+  {
     path: '/tools/teaching-week',
     name: 'teaching-week',
     component: () => import('@/views/TeachingWeekView.vue'),

@@ -10,7 +10,7 @@
  *   - 确认时调用后端批量导入接口（单事务），成功提示独立显示，失败不会留下半截数据。
  */
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { ApiError, courseApi, scheduleApi } from '@/api'
 import AppIcon from '@/components/AppIcon.vue'
 import ErrorState from '@/components/ErrorState.vue'
@@ -31,6 +31,7 @@ import { recognizeTimetableLayout } from '@/ocr/timetableLayout'
 import { weekViewImportGate } from '@/ocr/importScope'
 import { importBlockReason } from '@/ocr/importValidation'
 import { parseAcademicTimetable } from '@/import/academicTimetable'
+import { isTrustedSchoolOrigin, MAX_SCHOOL_PAYLOAD_CHARS } from '@/import/schoolBookmarklet'
 import { calibrationFromRows, loadCalibrationRows } from '@/domain/teachingWeekStore'
 import { currentTeachingWeekOn, todayInBeijing } from '@domain/teachingWeek'
 
@@ -156,7 +157,85 @@ onMounted(async () => {
   }
 })
 
+/* ------------------------------------------------ 学校一键导入（书签发来的课表） */
+
+const route = useRoute()
+/** '' | 'waiting' | 'received' | 'error' | 'no-opener' | 'timeout' */
+const schoolStatus = ref('')
+const schoolMessage = ref('')
+let schoolTimer = null
+let schoolDeadline = 0
+
+function stopSchoolHandshake() {
+  if (schoolTimer) window.clearInterval(schoolTimer)
+  schoolTimer = null
+  window.removeEventListener('message', onSchoolMessage)
+}
+
+function onSchoolMessage(event) {
+  if (!window.opener || event.source !== window.opener) return
+  if (!isTrustedSchoolOrigin(event.origin, window.location.hostname)) return
+  const data = event.data || {}
+  if (data.type === 'ddlmate:school-error') {
+    stopSchoolHandshake()
+    schoolStatus.value = 'error'
+    schoolMessage.value = String(data.message || '教务页面没能取到课表。').slice(0, 300)
+    return
+  }
+  if (data.type !== 'ddlmate:school-timetable') return
+  const text = data.payload?.text
+  if (typeof text !== 'string' || !text || text.length > MAX_SCHOOL_PAYLOAD_CHARS) {
+    schoolStatus.value = 'error'
+    schoolMessage.value = '收到的课表数据为空或太大。'
+    return
+  }
+  stopSchoolHandshake()
+  try {
+    event.source.postMessage({ type: 'ddlmate:received' }, event.origin)
+  } catch {
+    /* 教务页面已关闭也没关系 */
+  }
+  const result = parseAcademicTimetable(text)
+  if (result.error) {
+    schoolStatus.value = 'error'
+    schoolMessage.value = result.error
+    return
+  }
+  schoolStatus.value = 'received'
+  applyAcademicResult(result, `学校教务系统 ${String(data.payload?.host || '').slice(0, 60)}`)
+}
+
+function startSchoolHandshake() {
+  if (!window.opener) {
+    schoolStatus.value = 'no-opener'
+    return
+  }
+  schoolStatus.value = 'waiting'
+  schoolDeadline = Date.now() + 2 * 60 * 1000
+  window.addEventListener('message', onSchoolMessage)
+  const ping = () => {
+    if (Date.now() > schoolDeadline) {
+      stopSchoolHandshake()
+      schoolStatus.value = 'timeout'
+      return
+    }
+    try {
+      // 「我准备好了」不含任何数据，发给打开我的那个页面即可
+      window.opener?.postMessage({ type: 'ddlmate:ready' }, '*')
+    } catch {
+      /* ignore */
+    }
+  }
+  ping()
+  schoolTimer = window.setInterval(ping, 1000)
+}
+
+onMounted(() => {
+  if (route.query.from === 'school') startSchoolHandshake()
+})
+
 onBeforeUnmount(() => {
+  stopSchoolHandshake()
   unmounted = true
   runId += 1 // 让进行中的识别任务作废，不再写回状态
   releaseObjectUrl(imageUrl.value)
@@ -195,11 +274,17 @@ async function onDataFileChange(event) {
     ocrState.error = result.error
     return
   }
+  applyAcademicResult(result, file.name)
+}
+
+/** 把解析好的教务课表放进候选表（文件导入与学校一键导入共用）。 */
+function applyAcademicResult(result, label) {
   runId += 1 // 作废进行中的图片识别，避免它稍后覆盖这里的结果
   ocrState.running = false
+  ocrState.error = ''
   ocrState.weekView = null
   weekViewConfirmed.value = false
-  dataSource.value = `${file.name}（${result.source === 'eams' ? '教务网页课表' : '小程序课表接口'}）`
+  dataSource.value = `${label}（${result.source === 'eams' ? '教务网页课表' : '小程序课表接口'}）`
   ocrState.layout = result.source === 'eams' ? '教务网页课表' : '小程序课表接口'
   ocrState.rawText = result.summary
   ocrState.warnings = result.warnings
@@ -806,6 +891,21 @@ async function submit() {
       </RouterLink>
     </div>
 
+    <section v-if="schoolStatus" class="card" :class="{ 'card--accent': schoolStatus === 'received' }" style="margin-bottom: 16px">
+      <div class="card__title" style="margin-bottom: 6px">
+        <AppIcon name="download" :size="18" />
+        学校一键导入
+      </div>
+      <p v-if="schoolStatus === 'waiting'" class="small" style="margin: 0">正在从学校教务系统读取课表…（如果一直没有反应，回到教务页面再点一次书签）</p>
+      <p v-else-if="schoolStatus === 'received'" class="small" style="margin: 0">已收到课表，下面是候选，请核对后点底部的「确认导入」。</p>
+      <p v-else-if="schoolStatus === 'error'" class="field__error" style="margin: 0">{{ schoolMessage }}</p>
+      <p v-else-if="schoolStatus === 'timeout'" class="small" style="margin: 0">两分钟内没有收到课表。请回到教务系统的页面，再点一次「导入到 DDL Mate」书签。</p>
+      <p v-else class="small" style="margin: 0">
+        这个页面要由教务系统里的书签打开才能收到课表。设置方法见
+        <RouterLink to="/tools/school-import">学校一键导入</RouterLink>。
+      </p>
+    </section>
+
     <section class="card">
       <div class="card__head">
         <div>
@@ -846,6 +946,7 @@ async function submit() {
       <p class="small muted" style="margin: -4px 0 12px">
         「导入教务数据」：选择在课表页面抓包导出的 <span class="mono">.har</span> 文件（支持学校小程序的课表接口、教务网页「我的课表」），
         或单独保存的课表 JSON。文件只在浏览器里读取，不上传；里面的登录信息不会被读取或保存。
+        电脑上更省事：用 <RouterLink to="/tools/school-import">学校一键导入</RouterLink> 书签，登录教务系统后点一下就行。
       </p>
       <p v-if="dataSource" class="small" style="margin: -6px 0 12px">已从 {{ dataSource }} 读入 {{ ocrState.candidates.length }} 条课表，请在下面核对。</p>
 
