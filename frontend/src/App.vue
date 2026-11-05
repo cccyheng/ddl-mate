@@ -12,6 +12,7 @@ import AppIcon from '@/components/AppIcon.vue'
 import ReminderToasts from '@/components/ReminderToasts.vue'
 import { startReminderScheduler } from '@/composables/reminderScheduler'
 import { startUpdateCheck, updateAvailable } from '@/composables/updateCheck'
+import { feedbackState, refreshFeedbackRole } from '@/composables/feedbackState'
 import { currentTeachingWeek } from '@/domain/teachingWeekStore'
 import { todayLabel } from '@/utils/datetime'
 import { readPreference, writePreference } from '@/utils/preferences'
@@ -145,6 +146,14 @@ function onUnauthenticated() {
   if (route.name !== 'login') router.push({ name: 'login', query: { redirect: route.fullPath } })
 }
 
+// 登录后（从登录页跳回来时 App 不会重新挂载）也刷新一次站长身份和未读反馈数
+watch(
+  () => authState.authenticated,
+  (ok) => {
+    if (ok) refreshFeedbackRole()
+  },
+)
+
 async function logout() {
   await authApi.logout().catch(() => {})
   window.location.assign('/login')
@@ -160,6 +169,7 @@ onMounted(async () => {
     profile.value = await profileApi.get()
     startReminderScheduler()
     refreshTeachingWeek()
+    refreshFeedbackRole()
   } catch (error) {
     profileError.value = error.message
   }
@@ -205,6 +215,16 @@ onMounted(async () => {
       </nav>
 
       <div class="sidebar__foot">
+        <RouterLink
+          class="nav__link sidebar__feedback"
+          :class="{ 'nav__link--active': activeName === 'feedback' }"
+          :to="{ path: '/feedback', query: route.name === 'feedback' ? route.query : { from: route.fullPath } }"
+          :title="collapsed ? '问题反馈' : undefined"
+        >
+          <AppIcon name="inbox" :size="17" />
+          <span>问题反馈</span>
+          <span v-if="feedbackState.admin && feedbackState.unread" class="sidebar__badge">{{ feedbackState.unread }}</span>
+        </RouterLink>
         <RouterLink class="sidebar__foot-card" to="/about" :title="collapsed ? profileLine : undefined">
           <span class="sidebar__foot-title">
             <AppIcon name="user" :size="16" />
@@ -320,6 +340,22 @@ onMounted(async () => {
   background: var(--warn-soft);
   color: var(--warn);
   border-bottom: 1px solid var(--warn-line);
+}
+
+.sidebar__feedback {
+  margin-bottom: 8px;
+}
+
+.sidebar__badge {
+  margin-left: auto;
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--clay);
+  color: #fff;
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
 }
 
 .sidebar__version {

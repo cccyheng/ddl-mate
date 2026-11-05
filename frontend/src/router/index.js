@@ -146,6 +146,12 @@ const routes = [
     meta: { title: '课表冲突检查' },
   },
   {
+    path: '/feedback',
+    name: 'feedback',
+    component: () => import('@/views/FeedbackView.vue'),
+    meta: { title: '问题反馈' },
+  },
+  {
     path: '/tools/school-import',
     name: 'school-import',
     component: () => import('@/views/SchoolImportView.vue'),

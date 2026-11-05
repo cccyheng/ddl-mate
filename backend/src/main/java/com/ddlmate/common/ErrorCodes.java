@@ -14,6 +14,8 @@ public final class ErrorCodes {
     public static final String FORBIDDEN_ORIGIN = "FORBIDDEN_ORIGIN";
     public static final String REGISTRATION_LIMITED = "REGISTRATION_LIMITED";
     public static final String QUOTA_EXCEEDED = "QUOTA_EXCEEDED";
+    public static final String FORBIDDEN = "FORBIDDEN";
+    public static final String FEEDBACK_LIMITED = "FEEDBACK_LIMITED";
     public static final String FILE_TOO_LARGE = "FILE_TOO_LARGE";
     public static final String UNSUPPORTED_MEDIA_TYPE = "UNSUPPORTED_MEDIA_TYPE";
     public static final String INTERNAL_ERROR = "INTERNAL_ERROR";

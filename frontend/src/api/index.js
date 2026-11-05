@@ -81,6 +81,15 @@ export const taskApi = {
  * 键值设置（专注记录、今日计划、模板、复习安排……）。取值是与手机端相同格式的字符串，
  * 写入必须带读到的 revision；被别处改过会得到 409 SETTING_CONFLICT。
  */
+/** 问题反馈：用户提交 / 看自己的；站长看全部、处理、回复。 */
+export const feedbackApi = {
+  submit: (payload) => http.post('/feedback', payload),
+  mine: () => http.get('/feedback/mine'),
+  role: () => http.get('/feedback/role'),
+  all: (status) => http.get('/admin/feedback', { status }),
+  update: (id, payload) => http.patch(`/admin/feedback/${id}`, payload),
+}
+
 export const settingsApi = {
   get: (key) => http.get(`/settings/${encodeURIComponent(key)}`),
   listByPrefix: (prefix) => http.get('/settings', { prefix }),

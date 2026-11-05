@@ -138,3 +138,23 @@ CREATE TABLE IF NOT EXISTS app_settings (
     updated_at    DATETIME(6)  NOT NULL,
     PRIMARY KEY (setting_key)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
+
+-- 问题反馈：不按用户隔离，站长查看全部；普通用户只能查自己的
+CREATE TABLE IF NOT EXISTS feedback (
+    id          BIGINT        NOT NULL AUTO_INCREMENT,
+    user_id     BIGINT        NOT NULL,
+    username    VARCHAR(64)   NOT NULL,
+    category    VARCHAR(16)   NOT NULL,
+    content     VARCHAR(2000) NOT NULL,
+    contact     VARCHAR(100)  NULL,
+    page        VARCHAR(200)  NULL,
+    user_agent  VARCHAR(300)  NULL,
+    status      VARCHAR(16)   NOT NULL,
+    reply       VARCHAR(1000) NULL,
+    replied_at  DATETIME(6)   NULL,
+    created_at  DATETIME(6)   NOT NULL,
+    updated_at  DATETIME(6)   NOT NULL,
+    PRIMARY KEY (id),
+    KEY idx_feedback_user (user_id),
+    KEY idx_feedback_status (status)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;

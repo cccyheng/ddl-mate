@@ -118,6 +118,11 @@ public class GlobalExceptionHandler {
                 "接口或资源不存在：" + request.getRequestURI(), request, null);
     }
 
+    @ExceptionHandler(com.ddlmate.common.ForbiddenException.class)
+    public ResponseEntity<ApiError> handleForbidden(com.ddlmate.common.ForbiddenException ex, HttpServletRequest request) {
+        return build(HttpStatus.FORBIDDEN, ErrorCodes.FORBIDDEN, ex.getMessage(), request, null);
+    }
+
     @ExceptionHandler(ResourceInUseException.class)
     public ResponseEntity<ApiError> handleInUse(ResourceInUseException ex, HttpServletRequest request) {
         return build(HttpStatus.CONFLICT, ex.getCode(), ex.getMessage(), request, null);
