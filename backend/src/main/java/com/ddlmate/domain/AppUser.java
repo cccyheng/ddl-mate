@@ -59,6 +59,19 @@ public class AppUser {
     @Column(name = "temp_password_expires_at")
     private OffsetDateTime tempPasswordExpiresAt;
 
+    /** 被站长封禁：不能登录，已登录的会话立即失效；数据保留，可解封。 */
+    @Column(name = "disabled")
+    private Boolean disabled;
+
+    @Column(name = "disabled_at")
+    private OffsetDateTime disabledAt;
+
+    @Column(name = "disabled_reason", length = 200)
+    private String disabledReason;
+
+    @Column(name = "last_login_at")
+    private OffsetDateTime lastLoginAt;
+
     protected AppUser() {
     }
 
@@ -126,6 +139,38 @@ public class AppUser {
 
     public void setTempPasswordExpiresAt(OffsetDateTime value) {
         this.tempPasswordExpiresAt = value;
+    }
+
+    public boolean isDisabled() {
+        return Boolean.TRUE.equals(disabled);
+    }
+
+    public void setDisabled(boolean value) {
+        this.disabled = value;
+    }
+
+    public OffsetDateTime getDisabledAt() {
+        return disabledAt;
+    }
+
+    public void setDisabledAt(OffsetDateTime value) {
+        this.disabledAt = value;
+    }
+
+    public String getDisabledReason() {
+        return disabledReason;
+    }
+
+    public void setDisabledReason(String value) {
+        this.disabledReason = value;
+    }
+
+    public OffsetDateTime getLastLoginAt() {
+        return lastLoginAt;
+    }
+
+    public void setLastLoginAt(OffsetDateTime value) {
+        this.lastLoginAt = value;
     }
 
     public boolean isAdmin() {

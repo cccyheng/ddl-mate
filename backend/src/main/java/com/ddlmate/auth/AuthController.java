@@ -17,6 +17,7 @@ import com.ddlmate.common.ForbiddenException;
 import com.ddlmate.domain.AppUser;
 import com.ddlmate.service.AccountService;
 import com.ddlmate.service.PasswordResetService;
+import com.ddlmate.service.UserAdminService;
 import com.ddlmate.tenant.OwnerResolver;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -33,12 +34,14 @@ public class AuthController {
     private final AuthService authService;
     private final AccountService accountService;
     private final PasswordResetService passwordResetService;
+    private final UserAdminService userAdminService;
 
     public AuthController(AuthService authService, AccountService accountService,
-            PasswordResetService passwordResetService) {
+            PasswordResetService passwordResetService, UserAdminService userAdminService) {
         this.authService = authService;
         this.accountService = accountService;
         this.passwordResetService = passwordResetService;
+        this.userAdminService = userAdminService;
     }
 
     public record LoginRequest(@NotNull @Size(max = 64) String username, @NotNull @Size(max = 256) String password) {
@@ -92,12 +95,18 @@ public class AuthController {
             return error(HttpStatus.TOO_MANY_REQUESTS, ErrorCodes.LOGIN_LOCKED,
                     "失败次数过多，请 " + locked.retryAfterSeconds() + " 秒后再试", request);
         }
+        if (result instanceof AuthService.Disabled disabled) {
+            return error(HttpStatus.FORBIDDEN, ErrorCodes.ACCOUNT_DISABLED,
+                    "该账号已被封禁" + (disabled.reason() == null ? "" : "（原因：" + disabled.reason() + "）")
+                            + "，如有疑问请联系站长",
+                    request);
+        }
         if (result instanceof AuthService.TempExpired) {
             return error(HttpStatus.UNAUTHORIZED, ErrorCodes.LOGIN_FAILED,
                     "临时密码已过期（24 小时内有效），请在登录页点「忘记密码」重新申请", request);
         }
         if (result instanceof AuthService.Ok ok) {
-            return startSession(request, ok.userId(), ok.username(), ok.mustChangePassword());
+            return startSession(request, ok.userId(), ok.username(), ok.mustChangePassword(), "LOGIN");
         }
         return error(HttpStatus.UNAUTHORIZED, ErrorCodes.LOGIN_FAILED, "用户名或密码不正确", request);
     }
@@ -173,7 +182,7 @@ public class AuthController {
         }
         try {
             AppUser user = authService.register(clientKey(request), body.username(), body.password(), body.displayName());
-            return startSession(request, user.getId(), user.getUsername());
+            return startSession(request, user.getId(), user.getUsername(), false, "REGISTER");
         } catch (AuthService.RegistrationLimitException ex) {
             return error(HttpStatus.TOO_MANY_REQUESTS, ErrorCodes.REGISTRATION_LIMITED, ex.getMessage(), request);
         }
@@ -191,7 +200,7 @@ public class AuthController {
                     "失败次数过多，请 " + locked.retryAfterSeconds() + " 秒后再试", request);
         }
         if (result instanceof AuthService.Ok ok) {
-            return startSession(request, ok.userId(), ok.username());
+            return startSession(request, ok.userId(), ok.username(), false, "SETUP");
         }
         return error(HttpStatus.FORBIDDEN, ErrorCodes.LOGIN_FAILED, "设置码不正确或已失效", request);
     }
@@ -206,12 +215,9 @@ public class AuthController {
     }
 
     /** 换一个新会话再写入用户（防会话固定攻击）。 */
-    private static ResponseEntity<?> startSession(HttpServletRequest request, long userId, String username) {
-        return startSession(request, userId, username, false);
-    }
-
-    private static ResponseEntity<?> startSession(HttpServletRequest request, long userId, String username,
-            boolean mustChangePassword) {
+    private ResponseEntity<?> startSession(HttpServletRequest request, long userId, String username,
+            boolean mustChangePassword, String kind) {
+        userAdminService.recordLogin(userId, kind, clientKey(request), request.getHeader("User-Agent"));
         HttpSession old = request.getSession(false);
         if (old != null) {
             old.invalidate();

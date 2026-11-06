@@ -22,6 +22,14 @@ export const authApi = {
   resetRequest: (payload) => http.post('/auth/reset-request', payload),
 }
 
+/** 站长的用户管理。 */
+export const userAdminApi = {
+  list: () => http.get('/admin/users'),
+  logins: (id) => http.get(`/admin/users/${id}/logins`),
+  ban: (id, reason) => http.post(`/admin/users/${id}/ban`, { reason }),
+  unban: (id) => http.post(`/admin/users/${id}/unban`),
+}
+
 /** 站长处理忘记密码申请。 */
 export const resetRequestApi = {
   list: () => http.get('/admin/reset-requests'),

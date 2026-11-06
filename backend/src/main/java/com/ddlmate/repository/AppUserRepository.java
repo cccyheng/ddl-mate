@@ -17,6 +17,10 @@ public interface AppUserRepository extends JpaRepository<AppUser, Long> {
 
     boolean existsByUsernameIgnoreCase(String username);
 
+    /** 账号存在且没有被封禁。 */
+    @Query("select count(u) > 0 from AppUser u where u.id = :id and (u.disabled is null or u.disabled = false)")
+    boolean isActive(@org.springframework.data.repository.query.Param("id") Long id);
+
     @Query("select u from AppUser u order by u.id asc")
     List<AppUser> findAllOrdered();
 }

@@ -87,9 +87,10 @@ public class AuthFilter extends OncePerRequestFilter {
             return;
         }
         // 账号已注销（例如在另一台设备上）：这个会话立即作废，绝不能落到别的账号上
-        if (!users.existsById((Long) session.getAttribute(com.ddlmate.tenant.OwnerResolver.SESSION_USER_ID))) {
+        // 账号已注销或被封禁：这个会话立即作废
+        if (!users.isActive((Long) session.getAttribute(com.ddlmate.tenant.OwnerResolver.SESSION_USER_ID))) {
             session.invalidate();
-            reject(response, request, HttpStatus.UNAUTHORIZED, ErrorCodes.UNAUTHENTICATED, "账号不存在或已注销，请重新登录");
+            reject(response, request, HttpStatus.UNAUTHORIZED, ErrorCodes.UNAUTHENTICATED, "账号不存在、已注销或已被封禁，请重新登录");
             return;
         }
         if (Boolean.TRUE.equals(session.getAttribute(MUST_CHANGE)) && !ALLOWED_BEFORE_CHANGE.contains(path)) {

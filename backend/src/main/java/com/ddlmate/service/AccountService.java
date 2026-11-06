@@ -57,6 +57,7 @@ public class AccountService {
         }
         rows += jdbc.update("DELETE FROM feedback WHERE user_id = ?", userId);
         rows += jdbc.update("DELETE FROM password_reset_requests WHERE user_id = ?", userId);
+        rows += jdbc.update("DELETE FROM login_events WHERE user_id = ?", userId);
         users.delete(user);
         users.flush();
         log.warn("用户 {}（id={}）注销了账号，删除 {} 行数据、{} 个附件文件", user.getUsername(), userId, rows, files.size());

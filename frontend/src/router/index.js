@@ -22,6 +22,12 @@ const routes = [
     meta: { title: '忘记密码', public: true, bare: true },
   },
   {
+    path: '/admin/users',
+    name: 'admin-users',
+    component: () => import('@/views/AdminUsersView.vue'),
+    meta: { title: '用户管理' },
+  },
+  {
     path: '/account',
     name: 'account',
     component: () => import('@/views/AccountView.vue'),

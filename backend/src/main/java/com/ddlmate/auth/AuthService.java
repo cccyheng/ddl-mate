@@ -93,7 +93,7 @@ public class AuthService {
                 setupAvailable() ? "；一次性设置密码已开放，用完请删除 DDLMATE_AUTH_SETUP_TOKEN" : "");
     }
 
-    public sealed interface Result permits Ok, Rejected, Locked, TempExpired {
+    public sealed interface Result permits Ok, Rejected, Locked, TempExpired, Disabled {
     }
 
     /** mustChangePassword：用临时密码登录，必须先改密码。 */
@@ -105,6 +105,10 @@ public class AuthService {
 
     /** 临时密码已过期。 */
     public record TempExpired() implements Result {
+    }
+
+    /** 账号被站长封禁（只在密码正确时才告知，避免被用来探测账号状态）。 */
+    public record Disabled(String reason) implements Result {
     }
 
     public record Rejected() implements Result {
@@ -120,6 +124,9 @@ public class AuthService {
         Result result = guarded(clientKey,
                 () -> user.filter(u -> PasswordHasher.matches(chars(password), hashOf(u))).isPresent(),
                 () -> new Ok(user.get().getId(), user.get().getUsername(), user.get().isMustChangePassword()));
+        if (result instanceof Ok && user.get().isDisabled()) {
+            return new Disabled(user.get().getDisabledReason());
+        }
         if (result instanceof Ok ok && ok.mustChangePassword()) {
             var expires = user.get().getTempPasswordExpiresAt();
             if (expires != null && expires.isBefore(TimeZones.now())) {

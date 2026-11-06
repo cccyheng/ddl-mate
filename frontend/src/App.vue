@@ -230,6 +230,16 @@ onMounted(async () => {
           </span>
         </RouterLink>
         <RouterLink
+          v-if="authState.enabled && feedbackState.admin"
+          class="nav__link sidebar__feedback"
+          :class="{ 'nav__link--active': activeName === 'admin-users' }"
+          to="/admin/users"
+          :title="collapsed ? '用户管理' : undefined"
+        >
+          <AppIcon name="layers" :size="17" />
+          <span>用户管理</span>
+        </RouterLink>
+        <RouterLink
           v-if="authState.enabled"
           class="nav__link sidebar__feedback"
           :class="{ 'nav__link--active': activeName === 'account' }"
