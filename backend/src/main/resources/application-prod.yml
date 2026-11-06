@@ -30,6 +30,9 @@ ddlmate:
     enabled: true
   storage:
     upload-dir: ${DDLMATE_DATA_DIR:/opt/ddlmate/data}/uploads
+  backup:
+    nightly:
+      enabled: ${DDLMATE_BACKUP_NIGHTLY:true}
 
 logging:
   level:

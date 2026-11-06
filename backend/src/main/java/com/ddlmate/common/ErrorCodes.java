@@ -15,6 +15,7 @@ public final class ErrorCodes {
     public static final String REGISTRATION_LIMITED = "REGISTRATION_LIMITED";
     public static final String QUOTA_EXCEEDED = "QUOTA_EXCEEDED";
     public static final String FORBIDDEN = "FORBIDDEN";
+    public static final String METHOD_NOT_ALLOWED = "METHOD_NOT_ALLOWED";
     public static final String PASSWORD_CHANGE_REQUIRED = "PASSWORD_CHANGE_REQUIRED";
     public static final String RESET_LIMITED = "RESET_LIMITED";
     public static final String FEEDBACK_LIMITED = "FEEDBACK_LIMITED";

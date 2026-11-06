@@ -65,13 +65,20 @@ ddlmate:
     registration-enabled: ${DDLMATE_AUTH_REGISTRATION_ENABLED:false}
     registrations-per-ip-per-hour: ${DDLMATE_AUTH_REGISTRATIONS_PER_IP_PER_HOUR:3}
     registrations-per-day: ${DDLMATE_AUTH_REGISTRATIONS_PER_DAY:30}
+    # 连续登录失败多少次后，同一来源锁定多少秒
+    max-failures: ${DDLMATE_AUTH_MAX_FAILURES:5}
+    lock-seconds: ${DDLMATE_AUTH_LOCK_SECONDS:300}
   # 每个账号的用量上限
   quota:
     max-tasks: ${DDLMATE_QUOTA_MAX_TASKS:5000}
     max-courses: ${DDLMATE_QUOTA_MAX_COURSES:200}
     max-storage-mb: ${DDLMATE_QUOTA_MAX_STORAGE_MB:100}
-    max-failures: 5
-    lock-seconds: 300
+  # 每晚自动备份（数据库导出 + 图片打包，保留 N 天）；服务器版在 application-prod.yml 里默认开启
+  backup:
+    nightly:
+      enabled: ${DDLMATE_BACKUP_NIGHTLY:false}
+      cron: ${DDLMATE_BACKUP_CRON:0 0 3 * * *}
+      retention-days: ${DDLMATE_BACKUP_RETENTION_DAYS:14}
   user:
     # 本地资料（显示名等），与上面的登录账号是两回事
     username: ${DDLMATE_USER_NAME:local}

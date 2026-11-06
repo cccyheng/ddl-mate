@@ -111,7 +111,7 @@ const routes = [
     path: '/about',
     name: 'about',
     component: () => import('@/views/AboutView.vue'),
-    meta: { title: '路线图与说明' },
+    meta: { title: '关于与路线图' },
   },
   { path: '/focus', name: 'focus', component: () => import('@/views/FocusView.vue'), meta: { title: '专注' } },
   {

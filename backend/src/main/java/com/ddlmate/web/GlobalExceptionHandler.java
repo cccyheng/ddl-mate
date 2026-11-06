@@ -118,6 +118,14 @@ public class GlobalExceptionHandler {
                 "接口或资源不存在：" + request.getRequestURI(), request, null);
     }
 
+    /** 不支持的请求方法（多半是网上的扫描器乱发的 POST / 或自造方法）：405，不当成服务器错误记日志。 */
+    @ExceptionHandler(org.springframework.web.HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiError> handleMethodNotAllowed(org.springframework.web.HttpRequestMethodNotSupportedException ex,
+            HttpServletRequest request) {
+        return build(HttpStatus.METHOD_NOT_ALLOWED, ErrorCodes.METHOD_NOT_ALLOWED,
+                "不支持的请求方法：" + ex.getMethod(), request, null);
+    }
+
     @ExceptionHandler(com.ddlmate.common.ForbiddenException.class)
     public ResponseEntity<ApiError> handleForbidden(com.ddlmate.common.ForbiddenException ex, HttpServletRequest request) {
         return build(HttpStatus.FORBIDDEN, ErrorCodes.FORBIDDEN, ex.getMessage(), request, null);

@@ -64,7 +64,7 @@ const NAV_GROUPS = [
       { name: 'reminders', to: '/tools/reminders', label: '提醒', icon: 'bell' },
       { name: 'backup', to: '/tools/backup', label: '备份与恢复', icon: 'archive' },
       { name: 'sources', to: '/sources', label: '原通知', icon: 'inbox' },
-      { name: 'about', to: '/about', label: '路线图', icon: 'compass' },
+      { name: 'about', to: '/about', label: '关于与路线图', icon: 'compass' },
     ],
   },
 ]
@@ -83,8 +83,8 @@ const pageTitle = computed(() => route.meta.title || 'DDL Mate')
 
 const profileLine = computed(() => {
   if (profile.value) return `${profile.value.displayName} · ${profile.value.timeZone}`
-  if (profileError.value) return '本地资料暂不可用'
-  return '本地资料读取中…'
+  if (profileError.value) return '个人资料暂不可用'
+  return '个人资料读取中…'
 })
 
 /* ---------- 侧栏折叠（桌面）/ 抽屉（窄屏） ---------- */
@@ -242,7 +242,7 @@ onMounted(async () => {
         <RouterLink class="sidebar__foot-card" to="/about" :title="collapsed ? profileLine : undefined">
           <span class="sidebar__foot-title">
             <AppIcon name="user" :size="16" />
-            <span>本地资料</span>
+            <span>个人资料</span>
           </span>
           <span class="sidebar__foot-meta">{{ profileLine }}</span>
         </RouterLink>
